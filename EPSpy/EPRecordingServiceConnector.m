@@ -11,6 +11,8 @@
 #import "EPRecordingServiceConnector.h"
 #import "EPRecordingServiceProtocol.h"
 
+static NSXPCConnection* currentConnection;
+
 @implementation EPRecordingServiceConnector
 
 + (BOOL)startRecordingWithURL:(NSURL *)URL events:(NSArray<NSNumber*>*)events options:(EPRecorderOptions *)options
@@ -27,12 +29,12 @@
 		return NO;
 	}
 	
-	NSXPCConnection* connection = [[NSXPCConnection alloc] initWithMachServiceName:@"com.LeoNatan.EPRecordingService.xpc" options:NSXPCConnectionPrivileged];
-	connection.remoteObjectInterface = [NSXPCInterface interfaceWithProtocol:@protocol(EPRecordingServiceProtocol)];
-	[connection resume];
+	currentConnection = [[NSXPCConnection alloc] initWithMachServiceName:@"com.LeoNatan.EPRecordingService.xpc" options:NSXPCConnectionPrivileged];
+	currentConnection.remoteObjectInterface = [NSXPCInterface interfaceWithProtocol:@protocol(EPRecordingServiceProtocol)];
+	[currentConnection resume];
 	
 	rv = NO;
-	id<EPRecordingServiceProtocol> proxy = [connection synchronousRemoteObjectProxyWithErrorHandler:^(NSError * _Nonnull error) {
+	id<EPRecordingServiceProtocol> proxy = [currentConnection synchronousRemoteObjectProxyWithErrorHandler:^(NSError * _Nonnull error) {
 		NSLog(@"Error: %@", error);
 	}];
 	[proxy startRecordingWithURL:URL events:events options:options completionHandler:^(BOOL started) {
@@ -44,14 +46,12 @@
 
 + (void)stopRecording
 {
-	NSXPCConnection* connection = [[NSXPCConnection alloc] initWithMachServiceName:@"com.LeoNatan.EPRecordingService.xpc" options:NSXPCConnectionPrivileged];
-	connection.remoteObjectInterface = [NSXPCInterface interfaceWithProtocol:@protocol(EPRecordingServiceProtocol)];
-	[connection resume];
-	
-	id<EPRecordingServiceProtocol> proxy = [connection synchronousRemoteObjectProxyWithErrorHandler:^(NSError * _Nonnull error) {
+	id<EPRecordingServiceProtocol> proxy = [currentConnection synchronousRemoteObjectProxyWithErrorHandler:^(NSError * _Nonnull error) {
 		NSLog(@"Error: %@", error);
 	}];
 	[proxy stopRecording];
+	[currentConnection invalidate];
+	currentConnection = nil;
 }
 
 @end

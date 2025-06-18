@@ -28,6 +28,9 @@
 - (BOOL)listener:(NSXPCListener *)listener shouldAcceptNewConnection:(NSXPCConnection *)newConnection
 {
 	newConnection.exportedInterface = [NSXPCInterface interfaceWithProtocol:@protocol(EPRecordingServiceProtocol)];
+	newConnection.invalidationHandler = ^{
+		[self stopRecording];
+	};
 	newConnection.exportedObject = self;
 	[newConnection resume];
 	

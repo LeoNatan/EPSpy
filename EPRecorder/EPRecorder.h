@@ -6,7 +6,7 @@
 //
 
 #import <Foundation/Foundation.h>
-#import "EPRecorderOptions.h"
+#import <EPRecorder/EPRecorderOptions.h>
 
 //! Project version number for EPRecorder.
 FOUNDATION_EXPORT double EPRecorderVersionNumber;
