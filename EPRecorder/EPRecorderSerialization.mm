@@ -284,17 +284,22 @@ NSString* EPRecorderPathFromPID(pid_t pid)
 	return @(pathbuf);
 }
 
-NSArray* EPRecorderSignatureForAuditToken(const audit_token_t* audit_token) {
+// This is AI slop.
+NSArray<NSString*>* EPRecorderSignatureForAuditToken(const audit_token_t* audit_token)
+{
 	// Convert audit_token_t to pid
 	pid_t pid = audit_token_to_pid(*audit_token);
 	
 	// Get the SecCodeRef for the process
 	SecCodeRef codeRef = NULL;
 	NSDictionary* attributes = @{(__bridge NSString*)kSecGuestAttributePid: @(pid)};
-	OSStatus status = SecCodeCopyGuestWithAttributes(NULL, (__bridge CFDictionaryRef)attributes,
-													 kSecCSDefaultFlags, &codeRef);
+	OSStatus status = SecCodeCopyGuestWithAttributes(NULL,
+													 (__bridge CFDictionaryRef)attributes,
+													 kSecCSDefaultFlags,
+													 &codeRef);
 	
-	if (status != errSecSuccess) {
+	if(status != errSecSuccess)
+	{
 		NSLog(@"Error getting SecCodeRef: %d", (int)status);
 		return nil;
 	}
@@ -304,27 +309,30 @@ NSArray* EPRecorderSignatureForAuditToken(const audit_token_t* audit_token) {
 	status = SecCodeCopySigningInformation(codeRef, kSecCSSigningInformation, &signingInfo);
 	CFRelease(codeRef);
 	
-	if (status != errSecSuccess) {
+	if(status != errSecSuccess)
+	{
 		NSLog(@"Error getting signing information: %d", (int)status);
 		return nil;
 	}
 	
 	// Extract certificate chain
 	NSArray* certificates = [(__bridge NSDictionary*)signingInfo objectForKey:(__bridge NSString*)kSecCodeInfoCertificates];
-	NSMutableArray* authorities = [NSMutableArray array];
+	NSMutableArray<NSString*>* authorities = [NSMutableArray new];
 	
 	// Correct way to iterate over certificates
-	for (NSInteger i = 0; i < [certificates count]; i++) {
-		SecCertificateRef certRef = (__bridge SecCertificateRef)[certificates objectAtIndex:i];
+	for(NSUInteger idx = 0; idx < certificates.count; idx++)
+	{
+		SecCertificateRef certRef = (__bridge SecCertificateRef)certificates[idx];
 		
 		// Get detailed certificate information
-		CFStringRef summary = SecCertificateCopySubjectSummary(certRef);
+		NSString* summary = CFBridgingRelease(SecCertificateCopySubjectSummary(certRef));
 		
-		if (summary) {
-			NSString* authority = [NSString stringWithFormat:@"Authority=%@", (__bridge NSString*)summary];
-			[authorities addObject:authority];
-			CFRelease(summary);
+		if(summary == nil)
+		{
+			continue;
 		}
+		
+		[authorities addObject:[NSString stringWithFormat:@"Authority=%@", summary]];
 	}
 	
 	CFRelease(signingInfo);
@@ -365,7 +373,11 @@ NSDictionary* EPRecorderDictionaryForProcess(const es_process_t* process, EPReco
 	rv[@"bundleID"] = EPRecorderStringFromStringToken(&process->signing_id);
 	rv[@"teamID"] = EPRecorderStringFromStringToken(&process->team_id);
 	rv[@"codeSigningFlags"] = EPRecorderStringFromCodesigningFlags(process->codesigning_flags);
-	rv[@"signature"] = EPRecorderSignatureForAuditToken(&process->audit_token);
+	NSArray* signature = EPRecorderSignatureForAuditToken(&process->audit_token);
+	if(signature.count > 0)
+	{
+		rv[@"signature"] = signature;
+	}
 	
 	return rv;
 }
