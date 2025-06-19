@@ -11,11 +11,11 @@
 #import "EPRecordingServiceConnector.h"
 #import "EPRecordingServiceProtocol.h"
 
-static NSXPCConnection* currentConnection;
+static NSXPCConnection* currentConnection = nil;
 
 @implementation EPRecordingServiceConnector
 
-+ (BOOL)startRecordingWithURL:(NSURL *)URL events:(NSArray<NSNumber*>*)events options:(EPRecorderOptions *)options
++ (void)startRecordingWithURL:(NSURL*)URL events:(NSArray<NSNumber*>*)events options:(EPRecorderOptions*)options completionHandler:(void(^)(BOOL))completionHandler
 {
 	NSError* err;
 	SMAppService* service = [SMAppService daemonServiceWithPlistName:@"com.LeoNatan.EPRecordingService.plist"];
@@ -26,7 +26,8 @@ static NSXPCConnection* currentConnection;
 	{
 		[[NSAlert alertWithError:err] runModal];
 		
-		return NO;
+		completionHandler(NO);
+		return;
 	}
 	
 	currentConnection = [[NSXPCConnection alloc] initWithMachServiceName:@"com.LeoNatan.EPRecordingService.xpc" options:NSXPCConnectionPrivileged];
@@ -34,24 +35,30 @@ static NSXPCConnection* currentConnection;
 	[currentConnection resume];
 	
 	rv = NO;
-	id<EPRecordingServiceProtocol> proxy = [currentConnection synchronousRemoteObjectProxyWithErrorHandler:^(NSError * _Nonnull error) {
+	id<EPRecordingServiceProtocol> proxy = [currentConnection remoteObjectProxyWithErrorHandler:^(NSError * _Nonnull error) {
 		NSLog(@"Error: %@", error);
 	}];
 	[proxy startRecordingWithURL:URL events:events options:options completionHandler:^(BOOL started) {
-		rv = started;
+		dispatch_async(dispatch_get_main_queue(), ^ {
+			completionHandler(started);
+		});
 	}];
-	
-	return rv;
 }
 
-+ (void)stopRecording
++ (void)stopRecordingWithCompletionHandler:(void(^)(void))completionHandler
 {
-	id<EPRecordingServiceProtocol> proxy = [currentConnection synchronousRemoteObjectProxyWithErrorHandler:^(NSError * _Nonnull error) {
-		NSLog(@"Error: %@", error);
+	id<EPRecordingServiceProtocol> proxy = [currentConnection remoteObjectProxyWithErrorHandler:^(NSError * _Nonnull error) {
+		dispatch_async(dispatch_get_main_queue(), ^ {
+			completionHandler();
+		});
 	}];
-	[proxy stopRecording];
-	[currentConnection invalidate];
-	currentConnection = nil;
+	[proxy stopRecordingWithCompletionHandler:^ {
+		dispatch_async(dispatch_get_main_queue(), ^ {
+			completionHandler();
+			[currentConnection invalidate];
+			currentConnection = nil;
+		});
+	}];
 }
 
 @end

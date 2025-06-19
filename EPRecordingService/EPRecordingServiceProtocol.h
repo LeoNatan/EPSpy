@@ -11,6 +11,6 @@
 @protocol EPRecordingServiceProtocol <NSObject>
 
 - (void)startRecordingWithURL:(NSURL*)URL events:(NSArray<NSNumber*>*)events options:(EPRecorderOptions*)options completionHandler:(void (^)(BOOL))completionHandler;
-- (void)stopRecording;
+- (void)stopRecordingWithCompletionHandler:(void (^)(void))completionHandler;
 
 @end

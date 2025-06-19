@@ -29,7 +29,7 @@
 {
 	newConnection.exportedInterface = [NSXPCInterface interfaceWithProtocol:@protocol(EPRecordingServiceProtocol)];
 	newConnection.invalidationHandler = ^{
-		[self stopRecording];
+		[self stopRecordingWithCompletionHandler:^{}];
 	};
 	newConnection.exportedObject = self;
 	[newConnection resume];
@@ -42,9 +42,9 @@
 	completionHandler(EPRecorderStartRecording(URL, events, options));
 }
 
-- (void)stopRecording
+- (void)stopRecordingWithCompletionHandler:(void (^)(void))completionHandler
 {
-	EPRecorderStopRecording();
+	EPRecorderStopRecording(completionHandler);
 }
 
 @end

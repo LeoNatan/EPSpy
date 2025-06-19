@@ -12,8 +12,8 @@ NS_ASSUME_NONNULL_BEGIN
 
 @interface EPRecordingServiceConnector : NSObject
 
-+ (BOOL)startRecordingWithURL:(NSURL*)URL events:(NSArray<NSNumber*>*)events options:(EPRecorderOptions*)options;
-+ (void)stopRecording;
++ (void)startRecordingWithURL:(NSURL*)URL events:(NSArray<NSNumber*>*)events options:(EPRecorderOptions*)options completionHandler:(void(^)(BOOL))completionHandler;
++ (void)stopRecordingWithCompletionHandler:(void(^)(void))completionHandler;
 
 @end
 

@@ -85,6 +85,22 @@ struct ContentView: View {
 	@AppStorage("recordEnvironmentVariables")
 	var recordEnvironmentVariables: Bool = false
 	
+	func toggleRecording() async {
+		if recording {
+			await EPRecordingServiceConnector.stopRecording()
+			recording = false
+		} else {
+			recording = await EPRecordingServiceConnector.startRecording(with: exportURL!, events: events.map { NSNumber(value: $0.rawValue) }, options: {
+				let options = EPRecorderOptions()
+				options.ignorePlatformProcesses = ignorePlatformProcesses
+				options.expandProcess = expandProcess
+				options.recordLaunchArguments = recordLaunchArguments
+				options.recordEnvironmentVariables = recordEnvironmentVariables
+				return options
+			}())
+		}
+	}
+	
 	var body: some View {
 		Form {
 			Section {
@@ -160,18 +176,8 @@ struct ContentView: View {
 		.toolbar {
 			ToolbarItem(placement: .confirmationAction) {
 				Button {
-					if recording {
-						EPRecordingServiceConnector.stopRecording()
-						recording = false
-					} else {
-						recording = EPRecordingServiceConnector.startRecording(with: exportURL!, events: events.map { NSNumber(value: $0.rawValue) }, options: {
-							let options = EPRecorderOptions()
-							options.ignorePlatformProcesses = ignorePlatformProcesses
-							options.expandProcess = expandProcess
-							options.recordLaunchArguments = recordLaunchArguments
-							options.recordEnvironmentVariables = recordEnvironmentVariables
-							return options
-						}())
+					Task {
+						await toggleRecording()
 					}
 				} label: {
 					Label {

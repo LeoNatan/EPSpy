@@ -95,7 +95,7 @@ BOOL EPRecorderStartRecording(NSURL* url, NSArray<NSNumber*>* events, EPRecorder
 	return true;
 }
 
-void EPRecorderStopRecording(void)
+void EPRecorderStopRecording(void (^completionHandler)(void))
 {
 	es_delete_client(client);
 	client = NULL;
@@ -108,6 +108,8 @@ void EPRecorderStopRecording(void)
 		}
 		[fileHandle closeFile];
 		fileHandle = nil;
+		
+		completionHandler();
 		
 		exit(0);
 	});

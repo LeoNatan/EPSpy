@@ -18,7 +18,7 @@ CF_ASSUME_NONNULL_BEGIN
 CF_EXTERN_C_BEGIN
 
 BOOL EPRecorderStartRecording(NSURL* url, NSArray<NSNumber*>* events, EPRecorderOptions* options);
-void EPRecorderStopRecording(void);
+void EPRecorderStopRecording(void (^completionHandler)(void));
 
 CF_EXTERN_C_END
 CF_ASSUME_NONNULL_END
