@@ -50,6 +50,13 @@ if [ -z "$DRY_RUN" ]; then
 fi
 
 if [ -z "$DRY_RUN" ]; then
+	echo -e "\033[1;34mPushing updated versions\033[0m"
+	git add -A &> /dev/null
+	git commit -m "${VERSION}" &> /dev/null
+	git push
+fi
+
+if [ -z "$DRY_RUN" ]; then
 	echo -e "\033[1;34mCleaning up\033[0m"
 	rm -f "${RELEASE_NOTES_FILE}"
 	rm -f "${ZIP_FILE}"
