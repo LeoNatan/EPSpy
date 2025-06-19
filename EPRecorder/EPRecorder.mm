@@ -11,10 +11,10 @@
 #import "EPRecorderSerialization.h"
 
 static es_client_t* client = NULL;
-static NSFileHandle* fileHandle;
+static NSFileHandle* fileHandle = nil;
 
 static dispatch_queue_t writerQueue = dispatch_queue_create("eprecorder.writer", NULL);
-static NSMutableArray* eventsToWrite;
+static NSMutableArray* eventsToWrite = nil;
 
 @implementation EPRecorderOptions
 
@@ -101,8 +101,13 @@ void EPRecorderStopRecording(void)
 	client = NULL;
 	
 	dispatch_sync(writerQueue, ^{
-		[fileHandle writeData:[NSJSONSerialization dataWithJSONObject:eventsToWrite options:NSJSONWritingPrettyPrinted | NSJSONWritingSortedKeys | NSJSONWritingWithoutEscapingSlashes error:NULL]];
+		if(eventsToWrite != nil)
+		{
+			[fileHandle writeData:[NSJSONSerialization dataWithJSONObject:eventsToWrite options:NSJSONWritingPrettyPrinted | NSJSONWritingSortedKeys | NSJSONWritingWithoutEscapingSlashes error:NULL]];
+			eventsToWrite = nil;
+		}
 		[fileHandle closeFile];
+		fileHandle = nil;
 		
 		exit(0);
 	});
