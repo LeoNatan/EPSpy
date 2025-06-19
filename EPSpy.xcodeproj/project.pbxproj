@@ -207,6 +207,7 @@
 			isa = PBXNativeTarget;
 			buildConfigurationList = 39806BF22E0293C7002B83E2 /* Build configuration list for PBXNativeTarget "EPSpy" */;
 			buildPhases = (
+				39B4CC162E0459E60018C829 /* Update Build Version */,
 				39806BE22E0293C6002B83E2 /* Sources */,
 				39806BE32E0293C6002B83E2 /* Frameworks */,
 				39806BE42E0293C6002B83E2 /* Resources */,
@@ -332,6 +333,29 @@
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXResourcesBuildPhase section */
+
+/* Begin PBXShellScriptBuildPhase section */
+		39B4CC162E0459E60018C829 /* Update Build Version */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+			);
+			name = "Update Build Version";
+			outputFileListPaths = (
+			);
+			outputPaths = (
+				"$(PROJECT_DIR)/$(INFOPLIST_FILE)",
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = "/bin/zsh -ex";
+			shellScript = "cat \"${PROJECT_DIR}/${INFOPLIST_FILE}\"\nBUILD=$(/usr/libexec/PlistBuddy -c \"Print CFBundleVersion\" \"${PROJECT_DIR}/${INFOPLIST_FILE}\")\nBUILD=$(($BUILD + 1))\n/usr/libexec/PlistBuddy -c \"Set :CFBundleVersion $BUILD\" \"${PROJECT_DIR}/${INFOPLIST_FILE}\"\n";
+			showEnvVarsInLog = 0;
+		};
+/* End PBXShellScriptBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
 		39806BE22E0293C6002B83E2 /* Sources */ = {
@@ -493,10 +517,10 @@
 				CLANG_ENABLE_MODULES = YES;
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = "";
 				ENABLE_HARDENED_RUNTIME = YES;
 				ENABLE_PREVIEWS = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = NO;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = EPSpy/Info.plist;
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
@@ -527,10 +551,10 @@
 				CLANG_ENABLE_MODULES = YES;
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_TEAM = "";
 				ENABLE_HARDENED_RUNTIME = YES;
 				ENABLE_PREVIEWS = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = NO;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = EPSpy/Info.plist;
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
