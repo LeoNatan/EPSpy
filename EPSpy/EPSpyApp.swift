@@ -201,12 +201,12 @@ struct ContentView: View {
 					Text(exportURL?.path ?? "<No file selected>")
 						.foregroundStyle(exportURL != nil ? Color(NSColor.controlTextColor) : .red)
 					Spacer()
-					Button("Browse") {
+					Button("Browse…") {
 						pathPickerPresented = true
 					}
 				}
 			} header: {
-				Text("Recording File")
+				Text("Output JSON File")
 			}
 			Section {
 				HStack {
