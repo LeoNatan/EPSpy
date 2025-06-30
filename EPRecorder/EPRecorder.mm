@@ -29,6 +29,7 @@ static NSMutableArray* eventsToWrite = nil;
 	[coder encodeBool:_expandProcess forKey:@"expandProcess"];
 	[coder encodeBool:_recordLaunchArguments forKey:@"recordLaunchArguments"];
 	[coder encodeBool:_recordEnvironmentVariables forKey:@"recordEnvironmentVariables"];
+	[coder encodeObject:_filter forKey:@"filter"];
 }
 
 - (nullable instancetype)initWithCoder:(nonnull NSCoder *)coder
@@ -40,6 +41,8 @@ static NSMutableArray* eventsToWrite = nil;
 		_expandProcess = [coder decodeBoolForKey:@"expandProcess"];
 		_recordLaunchArguments = [coder decodeBoolForKey:@"recordLaunchArguments"];
 		_recordEnvironmentVariables = [coder decodeBoolForKey:@"recordEnvironmentVariables"];
+		_filter = [coder decodeObjectOfClass:NSPredicate.class forKey:@"filter"];
+		[_filter allowEvaluation];
 	}
 	return self;
 }
@@ -66,7 +69,16 @@ BOOL EPRecorderStartRecording(NSURL* url, NSArray<NSNumber*>* events, EPRecorder
 			NSDictionary* dict = EPRecorderDictionaryForMessage(message, options);
 			if(dict != nil)
 			{
-				[eventsToWrite addObject:dict];
+				BOOL shouldWrite = true;
+				if(options.filter != nil)
+				{
+					shouldWrite = [options.filter evaluateWithObject:dict];
+				}
+			
+				if(shouldWrite)
+				{
+					[eventsToWrite addObject:dict];
+				}
 			}
 			es_release_message(message);
 		});

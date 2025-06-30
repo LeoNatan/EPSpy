@@ -14,4 +14,6 @@
 @property BOOL recordLaunchArguments;
 @property BOOL recordEnvironmentVariables;
 
+@property NSPredicate* filter;
+
 @end

@@ -276,6 +276,17 @@ id EPRecorderObjectForFile(const es_file_t* file)
 	return EPRecorderStringFromStringToken(&file->path);
 }
 
+id EPRecorderObjectForStatfs(const struct statfs* statfs)
+{
+	NSMutableDictionary* statfsDict = [NSMutableDictionary new];
+	
+	statfsDict[@"type"] = @(statfs->f_fstypename);
+	statfsDict[@"directory"] = @(statfs->f_mntonname);
+	statfsDict[@"filesystem"] = @(statfs->f_mntfromname);
+	
+	return statfsDict;
+}
+
 NSString* EPRecorderPathFromPID(pid_t pid)
 {
 	char pathbuf[PROC_PIDPATHINFO_MAXSIZE] = {0};
@@ -434,9 +445,59 @@ void EPRecorderFillOpenEvent(NSMutableDictionary* rv, const es_event_open_t* ope
 	rv[@"open"] = EPRecorderObjectForFile(open->file);
 }
 
+void EPRecorderFillTargetEvent(NSMutableDictionary* rv, NSString* name, const es_event_write_t* eventWithTargetPtr, EPRecorderOptions* options)
+{
+	//All events sent to this function should have their first field be es_file_t*.
+	rv[name] = EPRecorderObjectForFile(eventWithTargetPtr->target);
+}
+
 void EPRecorderFillWriteEvent(NSMutableDictionary* rv, const es_event_write_t* write, EPRecorderOptions* options)
 {
-	rv[@"write"] = EPRecorderObjectForFile(write->target);
+	EPRecorderFillTargetEvent(rv, @"write", write, options);
+}
+
+void EPRecorderFillTruncateEvent(NSMutableDictionary* rv, const es_event_truncate_t* truncate, EPRecorderOptions* options)
+{
+	EPRecorderFillTargetEvent(rv, @"truncate", reinterpret_cast<const es_event_write_t*>(truncate), options);
+}
+
+void EPRecorderFillCopyfileEvent(NSMutableDictionary* rv, const es_event_copyfile_t* copyfile, EPRecorderOptions* options)
+{
+	NSMutableDictionary* copyfileDict = [NSMutableDictionary new];
+	
+	copyfileDict[@"source"] = EPRecorderObjectForFile(copyfile->source);
+	copyfileDict[@"target"] = [NSString stringWithFormat:@"%@/%@", EPRecorderObjectForFile(copyfile->target_dir), EPRecorderStringFromStringToken(&copyfile->target_name)];
+	
+	rv[@"copyfile"] = copyfileDict;
+}
+
+void EPRecorderFillRenameEvent(NSMutableDictionary* rv, const es_event_rename_t* rename, EPRecorderOptions* options)
+{
+	NSMutableDictionary* renameDict = [NSMutableDictionary new];
+	
+	renameDict[@"source"] = EPRecorderObjectForFile(rename->source);
+	if(rename->destination_type == ES_DESTINATION_TYPE_NEW_PATH)
+	{
+		renameDict[@"target"] = [NSString stringWithFormat:@"%@/%@", EPRecorderObjectForFile(rename->destination.new_path.dir), EPRecorderStringFromStringToken(&rename->destination.new_path.filename)];
+	}
+	else
+	{
+		renameDict[@"target"] = EPRecorderObjectForFile(rename->destination.existing_file);
+	}
+	
+	rv[@"rename"] = renameDict;
+}
+
+void EPRecorderFillCreateEvent(NSMutableDictionary* rv, const es_event_create_t* create, EPRecorderOptions* options)
+{
+	if(create->destination_type == ES_DESTINATION_TYPE_NEW_PATH)
+	{
+		rv[@"create"] = [NSString stringWithFormat:@"%@/%@", EPRecorderObjectForFile(create->destination.new_path.dir), EPRecorderStringFromStringToken(&create->destination.new_path.filename)];
+	}
+	else
+	{
+		rv[@"create"] = EPRecorderObjectForFile(create->destination.existing_file);
+	}
 }
 
 void EPRecorderFillCloseEvent(NSMutableDictionary* rv, const es_event_close_t* close, EPRecorderOptions* options)
@@ -464,6 +525,21 @@ static NSDictionary<NSNumber*, NSString*>* xpcConnectTypeMapping = @{
 	ES_XPC_DOMAIN_TYPE_GUI)
 };
 
+void EPRecorderFillMountEvent(NSMutableDictionary* rv, const es_event_mount_t* mount, EPRecorderOptions* options)
+{
+	rv[@"mount"] = EPRecorderObjectForStatfs(mount->statfs);
+}
+
+void EPRecorderFillRemountEvent(NSMutableDictionary* rv, const es_event_remount_t* remount, EPRecorderOptions* options)
+{
+	rv[@"remount"] = EPRecorderObjectForStatfs(remount->statfs);
+}
+
+void EPRecorderFillUnmountEvent(NSMutableDictionary* rv, const es_event_unmount_t* unmount, EPRecorderOptions* options)
+{
+	rv[@"unmount"] = EPRecorderObjectForStatfs(unmount->statfs);
+}
+
 void EPRecorderFillXPCConnectEvent(NSMutableDictionary* rv, const es_event_xpc_connect_t* xpcConnect, EPRecorderOptions* options)
 {
 	rv[@"xpc_connect"] = @{
@@ -490,8 +566,29 @@ void EPRecorderFillEvent(NSMutableDictionary* rv, const es_message_t* message, E
 		case ES_EVENT_TYPE_NOTIFY_WRITE:
 			EPRecorderFillWriteEvent(rv, &message->event.write, options);
 			break;
+		case ES_EVENT_TYPE_NOTIFY_COPYFILE:
+			EPRecorderFillCopyfileEvent(rv, &message->event.copyfile, options);
+			break;
+		case ES_EVENT_TYPE_NOTIFY_CREATE:
+			EPRecorderFillCreateEvent(rv, &message->event.create, options);
+			break;
+		case ES_EVENT_TYPE_NOTIFY_RENAME:
+			EPRecorderFillRenameEvent(rv, &message->event.rename, options);
+			break;
+		case ES_EVENT_TYPE_NOTIFY_TRUNCATE:
+			EPRecorderFillTruncateEvent(rv, &message->event.truncate, options);
+			break;
 		case ES_EVENT_TYPE_NOTIFY_XPC_CONNECT:
 			EPRecorderFillXPCConnectEvent(rv, message->event.xpc_connect, options);
+			break;
+		case ES_EVENT_TYPE_NOTIFY_MOUNT:
+			EPRecorderFillMountEvent(rv, &message->event.mount, options);
+			break;
+		case ES_EVENT_TYPE_NOTIFY_REMOUNT:
+			EPRecorderFillRemountEvent(rv, &message->event.remount, options);
+			break;
+		case ES_EVENT_TYPE_NOTIFY_UNMOUNT:
+			EPRecorderFillUnmountEvent(rv, &message->event.unmount, options);
 			break;
 		case ES_EVENT_TYPE_NOTIFY_EXIT:
 			EPRecorderFillExitEvent(rv, &message->event.exit, options);

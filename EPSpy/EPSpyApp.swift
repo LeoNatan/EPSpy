@@ -41,13 +41,6 @@ extension Array: @retroactive RawRepresentable where Element == es_event_type_t 
 	}
 }
 
-extension NSButton {
-	open override var focusRingType: NSFocusRingType {
-		get { .none }
-		set { }
-	}
-}
-
 struct ContentView: View {
 	@State
 	var recording: Bool = false
@@ -66,15 +59,24 @@ struct ContentView: View {
 	let supportedFileEvents: [(name: String, value: es_event_type_t)] = [
 		("ES_EVENT_TYPE_NOTIFY_OPEN", ES_EVENT_TYPE_NOTIFY_OPEN),
 		("ES_EVENT_TYPE_NOTIFY_CLOSE", ES_EVENT_TYPE_NOTIFY_CLOSE),
+		("ES_EVENT_TYPE_NOTIFY_CREATE", ES_EVENT_TYPE_NOTIFY_CREATE),
+		("ES_EVENT_TYPE_NOTIFY_COPYFILE", ES_EVENT_TYPE_NOTIFY_COPYFILE),
 		("ES_EVENT_TYPE_NOTIFY_WRITE", ES_EVENT_TYPE_NOTIFY_WRITE),
+		("ES_EVENT_TYPE_NOTIFY_RENAME", ES_EVENT_TYPE_NOTIFY_RENAME),
+		("ES_EVENT_TYPE_NOTIFY_TRUNCATE", ES_EVENT_TYPE_NOTIFY_TRUNCATE),
 	].sorted { $0.name.compare($1.name) == .orderedAscending }
 	
 	let supportedOtherEvents: [(name: String, value: es_event_type_t)] = [
+		("ES_EVENT_TYPE_NOTIFY_MOUNT", ES_EVENT_TYPE_NOTIFY_MOUNT),
+		("ES_EVENT_TYPE_NOTIFY_REMOUNT", ES_EVENT_TYPE_NOTIFY_REMOUNT),
+		("ES_EVENT_TYPE_NOTIFY_UNMOUNT", ES_EVENT_TYPE_NOTIFY_UNMOUNT),
 		("ES_EVENT_TYPE_NOTIFY_XPC_CONNECT", ES_EVENT_TYPE_NOTIFY_XPC_CONNECT),
 	].sorted { $0.name.compare($1.name) == .orderedAscending }
 	
 	@AppStorage("events")
 	var events: [es_event_type_t] = []
+	@State
+	var isEventSheetPresented: Bool = false
 	
 	@AppStorage("ignorePlatformProcesses")
 	var ignorePlatformProcesses: Bool = true
@@ -84,6 +86,9 @@ struct ContentView: View {
 	var recordLaunchArguments: Bool = false
 	@AppStorage("recordEnvironmentVariables")
 	var recordEnvironmentVariables: Bool = false
+	
+	@AppStorage("filter")
+	var predicateData: Data?
 	
 	func toggleRecording() async {
 		if recording {
@@ -96,8 +101,96 @@ struct ContentView: View {
 				options.expandProcess = expandProcess
 				options.recordLaunchArguments = recordLaunchArguments
 				options.recordEnvironmentVariables = recordEnvironmentVariables
+				options.filter = predicate(for: predicateData)
 				return options
 			}())
+		}
+	}
+	
+	func predicate(for data: Data?) -> NSPredicate? {
+		guard let data else {
+			return nil
+		}
+		
+		let predicate = try? NSKeyedUnarchiver.unarchivedObject(ofClass: NSPredicate.self, from: data)
+		
+		guard let predicate else {
+			return nil
+		}
+		
+		if let compoundPredicate = predicate as? NSCompoundPredicate,
+		   compoundPredicate.subpredicates.isEmpty {
+			return nil
+		}
+		
+		return predicate
+	}
+	
+	struct EventPicker: View {
+		let supportedProcessEvents: [(name: String, value: es_event_type_t)]
+		let supportedFileEvents: [(name: String, value: es_event_type_t)]
+		let supportedOtherEvents: [(name: String, value: es_event_type_t)]
+		@Binding
+		var events: [es_event_type_t]
+		
+		@Environment(\.dismiss) var dismiss
+		
+		var body: some View {
+			Form {
+				Section {
+					ForEach(supportedProcessEvents, id: \.value) { supportedEvent in
+						Toggle(supportedEvent.name, isOn: Binding(get: {
+							events.contains(supportedEvent.value)
+						}, set: { newValue in
+							if newValue {
+								events.append(supportedEvent.value)
+							} else {
+								events.removeAll { $0 == supportedEvent.value }
+							}
+						})).focusEffectDisabled()
+					}
+				} header: {
+					Text("Process Events")
+				}
+				Section {
+					ForEach(supportedFileEvents, id: \.value) { supportedEvent in
+						Toggle(supportedEvent.name, isOn: Binding(get: {
+							events.contains(supportedEvent.value)
+						}, set: { newValue in
+							if newValue {
+								events.append(supportedEvent.value)
+							} else {
+								events.removeAll { $0 == supportedEvent.value }
+							}
+						})).focusEffectDisabled()
+					}
+				} header: {
+					Text("File Events")
+				}
+				Section {
+					ForEach(supportedOtherEvents, id: \.value) { supportedEvent in
+						Toggle(supportedEvent.name, isOn: Binding(get: {
+							events.contains(supportedEvent.value)
+						}, set: { newValue in
+							if newValue {
+								events.append(supportedEvent.value)
+							} else {
+								events.removeAll { $0 == supportedEvent.value }
+							}
+						})).focusEffectDisabled()
+					}
+				} header: {
+					Text("Other Events")
+				}
+			}
+			.formStyle(.grouped)
+			.toolbar {
+				ToolbarItem(placement: .confirmationAction) {
+					Button("Done") {
+						dismiss()
+					}
+				}
+			}
 		}
 	}
 	
@@ -116,63 +209,58 @@ struct ContentView: View {
 				Text("Recording File")
 			}
 			Section {
-				ForEach(supportedProcessEvents, id: \.value) { supportedEvent in
-					Toggle(supportedEvent.name, isOn: Binding(get: {
-						events.contains(supportedEvent.value)
-					}, set: { newValue in
-						if newValue {
-							events.append(supportedEvent.value)
-						} else {
-							events.removeAll { $0 == supportedEvent.value }
-						}
-					})).focusEffectDisabled()
+				HStack {
+					Text("\(events.count) Event(s)")
+					Spacer()
+					Button("Select…") {
+						isEventSheetPresented.toggle()
+					}
+					.sheet(isPresented: $isEventSheetPresented) {
+						EventPicker(supportedProcessEvents: supportedProcessEvents, supportedFileEvents: supportedFileEvents, supportedOtherEvents: supportedOtherEvents, events: $events)
+					}
 				}
 			} header: {
-				Text("Process Events")
-			}
-			Section {
-				ForEach(supportedFileEvents, id: \.value) { supportedEvent in
-					Toggle(supportedEvent.name, isOn: Binding(get: {
-						events.contains(supportedEvent.value)
-					}, set: { newValue in
-						if newValue {
-							events.append(supportedEvent.value)
-						} else {
-							events.removeAll { $0 == supportedEvent.value }
-						}
-					})).focusEffectDisabled()
-				}
-			} header: {
-				Text("File Events")
-			}
-			Section {
-				ForEach(supportedOtherEvents, id: \.value) { supportedEvent in
-					Toggle(supportedEvent.name, isOn: Binding(get: {
-						events.contains(supportedEvent.value)
-					}, set: { newValue in
-						if newValue {
-							events.append(supportedEvent.value)
-						} else {
-							events.removeAll { $0 == supportedEvent.value }
-						}
-					})).focusEffectDisabled()
-				}
-			} header: {
-				Text("Other Events")
+				Text("Recorded Events")
 			}
 			Section {
 				Toggle("Ignore Apple Processes", isOn: $ignorePlatformProcesses)
 				Toggle("Expand Process", isOn: $expandProcess)
 				Toggle("Record Launch Arguments", isOn: $recordLaunchArguments)
 				Toggle("Record Environment Variables", isOn: $recordEnvironmentVariables)
+				HStack {
+					Text("Filter")
+					Spacer()
+					if let predicate = predicate(for: predicateData) as? NSCompoundPredicate {
+						Group {
+							Text("\(predicate.subpredicates.count) Rule(s)")
+							Button {
+								predicateData = nil
+							} label: {
+								Image(systemName: "trash")
+							}.buttonStyle(.plain)
+						}.foregroundStyle(.secondary)
+					} else {
+						Text("None")
+							.foregroundStyle(.secondary)
+					}
+					Button("Edit…") {
+						let editor = NSStoryboard(name: "FilterEditor", bundle: nil).instantiateInitialController() as! FilterEditor
+						editor.predicateData = predicateData
+						editor.completionHandler = { editor in
+							predicateData = editor.predicateData
+						}
+						
+						NSApp.mainWindow?.contentViewController?.presentAsSheet(editor)
+					}
+				}
 			} header: {
 				Text("Options")
 			}.toggleStyle(.checkbox)
 		}
 		.formStyle(.grouped)
 		.disabled(recording)
-		.fixedSize(horizontal: true, vertical: true)
-//		.frame(maxHeight: 350)
+		.fixedSize(horizontal: false, vertical: true)
+		.frame(width: 500)
 		.toolbar {
 			ToolbarItem(placement: .confirmationAction) {
 				Button {

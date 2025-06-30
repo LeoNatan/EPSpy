@@ -23,6 +23,8 @@ brew uninstall --cask /tmp/epspy.rb
 ----
 
 
-
-<p align="center"><img src="./Screenshot.png"/></p>
-
+<div style="display: flex;" align="center">
+<p><img src="./Screenshot1.png"/></p>
+<p><img src="./Screenshot2.png"/></p>
+<p><img src="./Screenshot3.png"/></p>
+</div>

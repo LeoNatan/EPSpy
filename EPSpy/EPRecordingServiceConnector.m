@@ -19,30 +19,43 @@ static NSXPCConnection* currentConnection = nil;
 {
 	NSError* err;
 	SMAppService* service = [SMAppService daemonServiceWithPlistName:@"com.LeoNatan.EPRecordingService.plist"];
-//	[service unregisterAndReturnError:&err];
-	__block BOOL rv = [service registerAndReturnError:&err];
 	
-	if(rv == NO)
+//	[service unregisterAndReturnError:&err];
+	
+	int retryCount = 3;
+	
+	while(retryCount > 0)
 	{
-		[[NSAlert alertWithError:err] runModal];
+		retryCount--;
 		
-		completionHandler(NO);
+		__block BOOL rv = [service registerAndReturnError:&err];
+		
+		if(rv == NO)
+		{
+			[NSRunLoop.currentRunLoop runUntilDate:[NSDate.date dateByAddingTimeInterval:0.5]];
+			continue;
+		}
+		
+		currentConnection = [[NSXPCConnection alloc] initWithMachServiceName:@"com.LeoNatan.EPRecordingService.xpc" options:NSXPCConnectionPrivileged];
+		currentConnection.remoteObjectInterface = [NSXPCInterface interfaceWithProtocol:@protocol(EPRecordingServiceProtocol)];
+		[currentConnection resume];
+		
+		rv = NO;
+		id<EPRecordingServiceProtocol> proxy = [currentConnection remoteObjectProxyWithErrorHandler:^(NSError * _Nonnull error) {
+			NSLog(@"Error: %@", error);
+		}];
+		[proxy startRecordingWithURL:URL events:events options:options completionHandler:^(BOOL started) {
+			dispatch_async(dispatch_get_main_queue(), ^ {
+				completionHandler(started);
+			});
+		}];
+		
 		return;
 	}
 	
-	currentConnection = [[NSXPCConnection alloc] initWithMachServiceName:@"com.LeoNatan.EPRecordingService.xpc" options:NSXPCConnectionPrivileged];
-	currentConnection.remoteObjectInterface = [NSXPCInterface interfaceWithProtocol:@protocol(EPRecordingServiceProtocol)];
-	[currentConnection resume];
+	[[NSAlert alertWithError:err] runModal];
 	
-	rv = NO;
-	id<EPRecordingServiceProtocol> proxy = [currentConnection remoteObjectProxyWithErrorHandler:^(NSError * _Nonnull error) {
-		NSLog(@"Error: %@", error);
-	}];
-	[proxy startRecordingWithURL:URL events:events options:options completionHandler:^(BOOL started) {
-		dispatch_async(dispatch_get_main_queue(), ^ {
-			completionHandler(started);
-		});
-	}];
+	completionHandler(NO);
 }
 
 + (void)stopRecordingWithCompletionHandler:(void(^)(void))completionHandler

@@ -40,6 +40,13 @@ echo -e "\033[1;34mCreating ZIP file\033[0m"
 ditto -c -k --sequesterRsrc --keepParent "${EXPORT_DIR}"/*.app "${ZIP_FILE}" &> /dev/null
 
 if [ -z "$DRY_RUN" ]; then
+	echo -e "\033[1;34mPushing updated versions\033[0m"
+	git add -A &> /dev/null
+	git commit -m "${VERSION}" &> /dev/null
+	git push
+fi
+
+if [ -z "$DRY_RUN" ]; then
 	echo -e "\033[1;34mCreating a GitHub release\033[0m"
 	gh release create --repo LeoNatan/EPSpy "$VERSION" --title "$VERSION" --notes ""
 fi
@@ -47,13 +54,6 @@ fi
 if [ -z "$DRY_RUN" ]; then
 	echo -e "\033[1;34mUploading ZIP attachment to release\033[0m"
 	gh release upload --repo LeoNatan/EPSpy "$VERSION" "${ZIP_FILE}"
-fi
-
-if [ -z "$DRY_RUN" ]; then
-	echo -e "\033[1;34mPushing updated versions\033[0m"
-	git add -A &> /dev/null
-	git commit -m "${VERSION}" &> /dev/null
-	git push
 fi
 
 if [ -z "$DRY_RUN" ]; then
