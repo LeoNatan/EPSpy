@@ -211,6 +211,7 @@ struct ContentView: View {
 			Section {
 				HStack {
 					Text("\(events.count) Event(s)")
+                        .foregroundStyle(events.count > 0 ? Color(NSColor.controlTextColor) : .red)
 					Spacer()
 					Button("Select…") {
 						isEventSheetPresented.toggle()

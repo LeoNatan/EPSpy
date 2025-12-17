@@ -8,26 +8,17 @@ Records supported [EndpointSecurity.framework](https://developer.apple.com/docum
 
 Release binaries are signed with adhoc certificate and have the `com.apple.developer.endpoint-security.client` entitlement, so it is required that `SIP` and/or `AMFI` [be disabled](https://gist.github.com/LeoNatan/b1cf77e1a0df2558f02631656e596408) to run. It is recommended to run this tool in a VM.
 
-Before installing, make sure **Homebrew** is installed: https://brew.sh
-
-To install EPSpy or upgrade:
+To install EPSpy, download the latest release from the releases page. Extract to `/Applications`. Run the following command:
 
 ```shell
-brew update
-curl --create-dirs -O --output-dir /tmp https://raw.githubusercontent.com/LeoNatan/EPSpy/refs/heads/master/epspy.rb
-brew install --force --no-quarantine --cask /tmp/epspy.rb
+xattr -r -d com.apple.quarantine /Applications/EPSpy.app
 ```
 
-To uninstall:
-
-```shell
-curl --create-dirs -O --output-dir /tmp https://raw.githubusercontent.com/LeoNatan/EPSpy/refs/heads/master/epspy.rb
-brew uninstall --cask /tmp/epspy.rb
-```
+To uninstall, delete `EPSpy.app` from `/Applications`.
 
 ### Running
 
-On first run record, the system will ask you to enable an extension. Enable it right away in the notification:
+On first run record, the system will ask you to enable an extension. You can enable it right away in the notification:
 
 <p align="center"><img width=393 src="./Notification.png"/></p>
 
@@ -37,7 +28,7 @@ On first run record, the system will ask you to enable an extension. Enable it r
 
 ### Troubleshooting
 
-- The following error indicates that the login iten has not been enabled.
+- The following error indicates that the login item has not been enabled.
 
 <p align="center"><img width=372 src="./Error.png"/></p>
 
