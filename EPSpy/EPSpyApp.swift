@@ -296,7 +296,7 @@ struct EPSpyApp: App {
         WindowGroup {
             ContentView()
 		}
-		.restorationBehavior(.disabled)
+//		.restorationBehavior(.disabled)
 		.defaultPosition(.center)
 		.windowResizability(.contentSize)
     }
