@@ -11,6 +11,8 @@
 #import <bsm/libbsm.h>
 #import <Kernel/kern/cs_blobs.h>
 #import <libproc.h>
+#include <sys/sysctl.h>
+#include <pwd.h>
 
 #define TO_STRING(t) @(t): @#t
 
@@ -295,6 +297,76 @@ NSString* EPRecorderPathFromPID(pid_t pid)
 	return @(pathbuf);
 }
 
+uid_t EPRecorderEUIDFromPID(pid_t pid)
+{
+//    struct kinfo_proc info;
+//    size_t length = sizeof(struct kinfo_proc);
+//    int mib[4] = { CTL_KERN, KERN_PROC, KERN_PROC_PID, pid };
+//    if (sysctl(mib, 4, &info, &length, NULL, 0) < 0)
+//        return -1;
+//    if (length == 0)
+//        return -1;
+//    return info.kp_eproc.e_ucred.cr_uid;
+
+    int result;
+    proc_bsdshortinfo procInfo;
+    result = proc_pidinfo(pid, PROC_PIDT_SHORTBSDINFO, 0, &procInfo, PROC_PIDT_SHORTBSDINFO_SIZE);
+    if (result == PROC_PIDT_SHORTBSDINFO_SIZE)
+    {
+        return procInfo.pbsi_uid;
+    }
+
+    return -1;
+}
+
+uid_t EPRecorderRUIDFromPID(pid_t pid)
+{
+//    struct kinfo_proc info;
+//    size_t length = sizeof(struct kinfo_proc);
+//    int mib[4] = { CTL_KERN, KERN_PROC, KERN_PROC_PID, pid };
+//    if (sysctl(mib, 4, &info, &length, NULL, 0) < 0)
+//        return -1;
+//    if (length == 0)
+//        return -1;
+//    return info.kp_eproc.e_pcred.p_ruid;
+
+    int result;
+    proc_bsdshortinfo procInfo;
+    result = proc_pidinfo(pid, PROC_PIDT_SHORTBSDINFO, 0, &procInfo, PROC_PIDT_SHORTBSDINFO_SIZE);
+    if (result == PROC_PIDT_SHORTBSDINFO_SIZE)
+    {
+        return procInfo.pbsi_ruid;
+    }
+
+    return -1;
+}
+
+uid_t EPRecorderSEUIDFromPID(pid_t pid)
+{
+    struct kinfo_proc info;
+    size_t length = sizeof(struct kinfo_proc);
+    int mib[4] = { CTL_KERN, KERN_PROC, KERN_PROC_PID, pid };
+    if (sysctl(mib, 4, &info, &length, NULL, 0) < 0)
+        return -1;
+    if (length == 0)
+        return -1;
+    return info.kp_eproc.e_pcred.p_svuid;
+}
+
+NSDictionary* EPRecorderUserInfo(uid_t uid)
+{
+    NSMutableDictionary* rv = [NSMutableDictionary new];
+    rv[@"uid"] = @(uid);
+
+    passwd* pwd = getpwuid(uid);
+    if(pwd != NULL)
+    {
+        rv[@"name"] = @(pwd->pw_name);
+    }
+
+    return rv;
+}
+
 // This is AI slop.
 NSArray<NSString*>* EPRecorderSignatureForAuditToken(const audit_token_t* audit_token)
 {
@@ -350,36 +422,54 @@ NSArray<NSString*>* EPRecorderSignatureForAuditToken(const audit_token_t* audit_
 	return authorities;
 }
 
+NSDictionary* EPRecorderProcessInfo(pid_t pid, NSString* executable = nil)
+{
+    NSMutableDictionary* rv = [@{
+        @"pid": @(pid),
+        @"executable": executable ?: EPRecorderPathFromPID(pid),
+    } mutableCopy];
+
+    uid_t euid = EPRecorderEUIDFromPID(pid);
+    if(euid == -1)
+    {
+        return rv;
+    }
+
+    rv[@"euid"] = EPRecorderUserInfo(euid);
+
+    uid_t ruid = EPRecorderRUIDFromPID(pid);
+    if(ruid != -1 && ruid != euid)
+    {
+        rv[@"ruid"] = EPRecorderUserInfo(ruid);
+    }
+    uid_t seuid = EPRecorderSEUIDFromPID(pid);
+    if(seuid != -1 && seuid != euid)
+    {
+        rv[@"seuid"] = EPRecorderUserInfo(seuid);
+    }
+
+    return rv;
+}
+
 NSDictionary* EPRecorderDictionaryForProcess(const es_process_t* process, EPRecorderOptions* options)
 {
-	NSMutableDictionary* rv = [NSMutableDictionary new];
-	pid_t pid = audit_token_to_pid(process->audit_token);
-	rv[@"pid"] = @(pid);
-	rv[@"executable"] = EPRecorderObjectForFile(process->executable);
-	
+    pid_t pid = audit_token_to_pid(process->audit_token);
+
+	NSMutableDictionary* rv = [EPRecorderProcessInfo(pid, EPRecorderObjectForFile(process->executable)) mutableCopy];
 	if(options.expandProcess == NO)
 	{
 		return rv;
 	}
 	
-	rv[@"parent"] = @{
-		@"pid": @(process->ppid),
-		@"executable": EPRecorderPathFromPID(process->ppid),
-	};
+	rv[@"parent"] = EPRecorderProcessInfo(process->ppid);
 	if(process->original_ppid != process->ppid)
 	{
-		rv[@"original_parent"] = @{
-			@"pid": @(process->original_ppid),
-			@"executable": EPRecorderPathFromPID(process->original_ppid),
-		};
-	}
+		rv[@"original_parent"] = EPRecorderProcessInfo(process->original_ppid);
+        }
 	pid_t rpid = audit_token_to_pid(process->responsible_audit_token);
 	if(rpid != pid)
 	{
-		rv[@"responsible"] = @{
-			@"pid": @(rpid),
-			@"executable": EPRecorderPathFromPID(rpid),
-		};
+		rv[@"responsible"] = EPRecorderProcessInfo(rpid);
 	}
 	rv[@"bundleID"] = EPRecorderStringFromStringToken(&process->signing_id);
 	rv[@"teamID"] = EPRecorderStringFromStringToken(&process->team_id);
