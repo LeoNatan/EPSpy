@@ -7,7 +7,6 @@
 
 import UniformTypeIdentifiers
 import SwiftUI
-import EndpointSecurity
 
 extension Array: @retroactive FileDocument {
 	public init(configuration: ReadConfiguration) {
@@ -15,7 +14,7 @@ extension Array: @retroactive FileDocument {
 	}
 	
 	public static var readableContentTypes: [UTType] {
-		[.json]
+        [.plainText]
 	}
 	
 	public func fileWrapper(configuration: WriteConfiguration) throws -> FileWrapper {
@@ -23,22 +22,116 @@ extension Array: @retroactive FileDocument {
 	}
 }
 
-extension Array: @retroactive RawRepresentable where Element == es_event_type_t {
-	public init?(rawValue: String) {
-		guard
-			let data = rawValue.data(using: .utf8),
-			let result = try? JSONDecoder().decode([UInt32].self, from: data)
-		else { return nil }
-		self = result.compactMap { es_event_type_t($0) }
-	}
-	
-	public var rawValue: String {
-		guard
-			let data = try? JSONEncoder().encode(self.map { $0.rawValue }),
-			let result = String(data: data, encoding: .utf8)
-		else { return "" }
-		return result
-	}
+extension BenchmarkTargetProcess: CustomStringConvertible {
+    public var description: String {
+        switch self {
+        case .local:
+            "in-process"
+        case .userService:
+            "user service"
+        case .rootDaemon:
+            "root daemon"
+        default:
+            fatalError()
+        }
+    }
+}
+
+extension Array where Element: FloatingPoint {
+
+    func sum() -> Element {
+        return self.reduce(0, +)
+    }
+
+    func average() -> Element {
+        return self.sum() / Element(self.count)
+    }
+
+    func stdDev() -> Element {
+        let mean = self.average()
+        let v = self.reduce(0, { $0 + ($1-mean)*($1-mean) })
+        return sqrt(v / (Element(self.count) - 1))
+    }
+
+    func median() -> Element {
+        let sortedArray = sorted()
+        if count % 2 != 0 {
+            return sortedArray[count / 2]
+        } else {
+            return (sortedArray[count / 2] + sortedArray[count / 2 - 1]) / (2.0 as! Element)
+        }
+    }
+
+}
+
+func generateReport(from results: [String: Any]) -> String {
+    var rv = [String]()
+
+    let totalDuration = results["totalDuration"] as? Double
+    let runResults = results["results"] as? [Double]
+    let computeDevices = results["computeDevices"] as? [String: Any]
+//    let hostMachine = results["hostMachine"] as? [String: Any]
+    let runInformation = results["runInformation"] as? [String: Any]
+
+    guard let totalDuration else {
+        return ""
+    }
+
+    rv.append("Total Duration: \(totalDuration)")
+    if let runInformation, let iterations = runInformation["iterations"] as? Int {
+        rv.append("Iterations: \(iterations)")
+    }
+    if let runInformation, let parallel = runInformation["parallel"] as? Bool {
+        rv.append("Parallel: \(parallel ? "Yes" : "No")")
+    }
+    if let runInformation, let processTarget = runInformation["processTarget"] as? UInt, let processTarget = BenchmarkTargetProcess(rawValue: processTarget) {
+        rv.append("Target Process: \(processTarget.description.capitalized)")
+    }
+    if let computeDevices {
+        rv.append("\nCompute Devices:")
+        if let availableDevices = computeDevices["availableDevices"] as? [String] {
+            rv.append("\tAvailable:")
+            for device in availableDevices.sorted() {
+                rv.append("\t\t\(device)")
+            }
+        }
+        if let supportedDevices = computeDevices["supportedDevicesMain"] as? [String] {
+            rv.append("\tSupported:")
+            for device in supportedDevices.sorted() {
+                rv.append("\t\t\(device)")
+            }
+        }
+        if let deviceUsed = computeDevices["deviceUsed"] as? String {
+            rv.append("\tUsed: \(deviceUsed)")
+        } else {
+            rv.append("\tUsed: Auto")
+        }
+    }
+
+    if let runResults, runResults.count > 0 {
+        let totalStr = "\(runResults.count)"
+        rv.append("\nIterations:")
+        for result in runResults.enumerated() {
+            let padded = NSString(format: "%\(totalStr.count)u" as NSString, result.offset + 1)
+            rv.append("\t\(padded): \(result.element.formattedForDisplay())")
+        }
+        rv.append("Min: \(runResults.min()!.formattedForDisplay())")
+        rv.append("Max: \(runResults.max()!.formattedForDisplay())")
+        rv.append("Average: \(runResults.average().formattedForDisplay())")
+        rv.append("Median: \(runResults.median().formattedForDisplay())")
+        rv.append("Standard Deviation: \(runResults.stdDev().formattedForDisplay())")
+    }
+
+    return rv.joined(separator: "\n")
+}
+
+extension Double {
+    func formattedForDisplay() -> String {
+        if isNaN {
+            return "-"
+        }
+        return Duration.seconds(self).formatted(.time(pattern: .minuteSecond(padMinuteToLength: 2, fractionalSecondsLength: 5)))
+    }
 }
 
 struct ContentView: View {
@@ -47,158 +140,43 @@ struct ContentView: View {
 	
 	@State
 	var pathPickerPresented: Bool = false
-	@AppStorage("exportPath")
+
+    @State
+    var results: [String: Any]? = nil
+
+    @AppStorage("runInDaemon")
+    var runInDaemon: Bool = false
+	@AppStorage("imagePath")
 	var exportURL: URL?
-	
-	let supportedProcessEvents: [(name: String, value: es_event_type_t)] = [
-		("ES_EVENT_TYPE_NOTIFY_EXEC", ES_EVENT_TYPE_NOTIFY_EXEC),
-		("ES_EVENT_TYPE_NOTIFY_FORK", ES_EVENT_TYPE_NOTIFY_FORK),
-		("ES_EVENT_TYPE_NOTIFY_EXIT", ES_EVENT_TYPE_NOTIFY_EXIT)
-	].sorted { $0.name.compare($1.name) == .orderedAscending }
-	
-	let supportedFileEvents: [(name: String, value: es_event_type_t)] = [
-		("ES_EVENT_TYPE_NOTIFY_OPEN", ES_EVENT_TYPE_NOTIFY_OPEN),
-		("ES_EVENT_TYPE_NOTIFY_CLOSE", ES_EVENT_TYPE_NOTIFY_CLOSE),
-		("ES_EVENT_TYPE_NOTIFY_CREATE", ES_EVENT_TYPE_NOTIFY_CREATE),
-		("ES_EVENT_TYPE_NOTIFY_COPYFILE", ES_EVENT_TYPE_NOTIFY_COPYFILE),
-		("ES_EVENT_TYPE_NOTIFY_WRITE", ES_EVENT_TYPE_NOTIFY_WRITE),
-		("ES_EVENT_TYPE_NOTIFY_RENAME", ES_EVENT_TYPE_NOTIFY_RENAME),
-		("ES_EVENT_TYPE_NOTIFY_TRUNCATE", ES_EVENT_TYPE_NOTIFY_TRUNCATE),
-	].sorted { $0.name.compare($1.name) == .orderedAscending }
-	
-	let supportedOtherEvents: [(name: String, value: es_event_type_t)] = [
-		("ES_EVENT_TYPE_NOTIFY_MOUNT", ES_EVENT_TYPE_NOTIFY_MOUNT),
-		("ES_EVENT_TYPE_NOTIFY_REMOUNT", ES_EVENT_TYPE_NOTIFY_REMOUNT),
-		("ES_EVENT_TYPE_NOTIFY_UNMOUNT", ES_EVENT_TYPE_NOTIFY_UNMOUNT),
-		("ES_EVENT_TYPE_NOTIFY_XPC_CONNECT", ES_EVENT_TYPE_NOTIFY_XPC_CONNECT),
-	].sorted { $0.name.compare($1.name) == .orderedAscending }
-	
-	@AppStorage("events")
-	var events: [es_event_type_t] = []
-	@State
-	var isEventSheetPresented: Bool = false
-	
-	@AppStorage("ignorePlatformProcesses")
-	var ignorePlatformProcesses: Bool = true
-	@AppStorage("expandProcess")
-	var expandProcess: Bool = false
-	@AppStorage("recordLaunchArguments")
-	var recordLaunchArguments: Bool = false
-	@AppStorage("recordEnvironmentVariables")
-	var recordEnvironmentVariables: Bool = false
-	
-	@AppStorage("filter")
-	var predicateData: Data?
-	
+    @AppStorage("processIterations")
+    var processIterations: Int = 20
+    @AppStorage("devicePredicate")
+    var devicePredicate: String?
+    @AppStorage("runInParallel")
+    var runInParallel: Bool = false
+
+    @MainActor
 	func toggleRecording() async {
-		if recording {
-			await EPRecordingServiceConnector.stopRecording()
-			recording = false
-		} else {
-			recording = await EPRecordingServiceConnector.startRecording(with: exportURL!, events: events.map { NSNumber(value: $0.rawValue) }, options: {
-				let options = EPRecorderOptions()
-				options.ignorePlatformProcesses = ignorePlatformProcesses
-				options.expandProcess = expandProcess
-				options.recordLaunchArguments = recordLaunchArguments
-				options.recordEnvironmentVariables = recordEnvironmentVariables
-				options.filter = predicate(for: predicateData)
-				return options
-			}())
-		}
-	}
-	
-	func predicate(for data: Data?) -> NSPredicate? {
-		guard let data else {
-			return nil
-		}
-		
-		let predicate = try? NSKeyedUnarchiver.unarchivedObject(ofClass: NSPredicate.self, from: data)
-		
-		guard let predicate else {
-			return nil
-		}
-		
-		if let compoundPredicate = predicate as? NSCompoundPredicate,
-		   compoundPredicate.subpredicates.isEmpty {
-			return nil
-		}
-		
-		return predicate
-	}
-	
-	struct EventPicker: View {
-		let supportedProcessEvents: [(name: String, value: es_event_type_t)]
-		let supportedFileEvents: [(name: String, value: es_event_type_t)]
-		let supportedOtherEvents: [(name: String, value: es_event_type_t)]
-		@Binding
-		var events: [es_event_type_t]
-		
-		@Environment(\.dismiss) var dismiss
-		
-		var body: some View {
-			Form {
-				Section {
-					ForEach(supportedProcessEvents, id: \.value) { supportedEvent in
-						Toggle(supportedEvent.name, isOn: Binding(get: {
-							events.contains(supportedEvent.value)
-						}, set: { newValue in
-							if newValue {
-								events.append(supportedEvent.value)
-							} else {
-								events.removeAll { $0 == supportedEvent.value }
-							}
-						})).focusEffectDisabled()
-					}
-				} header: {
-					Text("Process Events")
-				}
-				Section {
-					ForEach(supportedFileEvents, id: \.value) { supportedEvent in
-						Toggle(supportedEvent.name, isOn: Binding(get: {
-							events.contains(supportedEvent.value)
-						}, set: { newValue in
-							if newValue {
-								events.append(supportedEvent.value)
-							} else {
-								events.removeAll { $0 == supportedEvent.value }
-							}
-						})).focusEffectDisabled()
-					}
-				} header: {
-					Text("File Events")
-				}
-				Section {
-					ForEach(supportedOtherEvents, id: \.value) { supportedEvent in
-						Toggle(supportedEvent.name, isOn: Binding(get: {
-							events.contains(supportedEvent.value)
-						}, set: { newValue in
-							if newValue {
-								events.append(supportedEvent.value)
-							} else {
-								events.removeAll { $0 == supportedEvent.value }
-							}
-						})).focusEffectDisabled()
-					}
-				} header: {
-					Text("Other Events")
-				}
-			}
-			.formStyle(.grouped)
-			.toolbar {
-				ToolbarItem(placement: .confirmationAction) {
-					Button("Done") {
-						dismiss()
-					}
-				}
-			}
-		}
-	}
-	
+        recording = true
+        do {
+            results = try await EPRecordingServiceConnector.processImage(at: exportURL!,
+                                                                         iterations: UInt(processIterations),
+                                                                         parallel: runInParallel,
+                                                                         devicePredicate: devicePredicate,
+                                                                         targetProcess: runInDaemon ? .rootDaemon : .local)
+        } catch {
+            NSAlert(error: error).runModal()
+        }
+        recording = false
+    }
+
+    @Environment(\.openWindow) private var openWindow
+
 	var body: some View {
 		Form {
 			Section {
 				HStack {
-					Text(exportURL?.path ?? "<No file selected>")
+					Text(exportURL?.path ?? "<No image selected>")
 						.foregroundStyle(exportURL != nil ? Color(NSColor.controlTextColor) : .red)
 					Spacer()
 					Button("Browse…") {
@@ -206,57 +184,57 @@ struct ContentView: View {
 					}
 				}
 			} header: {
-				Text("Output JSON File")
+				Text("Image to Process")
 			}
-			Section {
-				HStack {
-					Text("\(events.count) Event(s)")
-                        .foregroundStyle(events.count > 0 ? Color(NSColor.controlTextColor) : .red)
-					Spacer()
-					Button("Select…") {
-						isEventSheetPresented.toggle()
-					}
-					.sheet(isPresented: $isEventSheetPresented) {
-						EventPicker(supportedProcessEvents: supportedProcessEvents, supportedFileEvents: supportedFileEvents, supportedOtherEvents: supportedOtherEvents, events: $events)
-					}
-				}
-			} header: {
-				Text("Recorded Events")
-			}
-			Section {
-				Toggle("Ignore Apple Processes", isOn: $ignorePlatformProcesses)
-				Toggle("Expand Process", isOn: $expandProcess)
-				Toggle("Record Launch Arguments", isOn: $recordLaunchArguments)
-				Toggle("Record Environment Variables", isOn: $recordEnvironmentVariables)
-				HStack {
-					Text("Filter")
-					Spacer()
-					if let predicate = predicate(for: predicateData) as? NSCompoundPredicate {
-						Group {
-							Text("\(predicate.subpredicates.count) Rule(s)")
-							Button {
-								predicateData = nil
-							} label: {
-								Image(systemName: "trash")
-							}.buttonStyle(.plain)
-						}.foregroundStyle(.secondary)
-					} else {
-						Text("None")
-							.foregroundStyle(.secondary)
-					}
-					Button("Edit…") {
-						let editor = NSStoryboard(name: "FilterEditor", bundle: nil).instantiateInitialController() as! FilterEditor
-						editor.predicateData = predicateData
-						editor.completionHandler = { editor in
-							predicateData = editor.predicateData
-						}
-						
-						NSApp.mainWindow?.contentViewController?.presentAsSheet(editor)
-					}
-				}
-			} header: {
-				Text("Options")
-			}.toggleStyle(.checkbox)
+            Section {
+                Toggle(isOn: $runInDaemon) {
+                    Text("Run in Daemon")
+                }
+                Picker("Device", selection: $devicePredicate) {
+                    Text("Auto").tag(nil as String?)
+                    Divider()
+                    Text("CPU").tag("cpu" as String?)
+                    Text("GPU").tag("gpu" as String?)
+                    Text("Neural Engine").tag("neural" as String?)
+                }.pickerStyle(.menu)
+                HStack {
+                    Text("Iterations")
+                    Spacer()
+                    Slider(value: .init {
+                        Double(processIterations)
+                    } set: { newValue in
+                        processIterations = Int(newValue)
+                    }, in: 1.0...200.0)
+                    Text(processIterations.formatted()).frame(width: 30)
+                }
+                Toggle(isOn: $runInParallel) {
+                    Text("Run in Parallel")
+                }
+            } header: {
+                Text("Settings")
+            }
+            Section {
+                VStack {
+                    if let results, let duration = results["totalDuration"] as? Double {
+                        HStack {
+                            Text(duration.formattedForDisplay())
+                            if let results = results["results"] as? [Double] {
+                                Text("(\(results.count) Iterations)")
+                            }
+                            Spacer()
+                            Button("Results") {
+                                openWindow(id: "report", value: ResultWrapper(results: results))
+                                //                            savePickerDefaultName = "benchmark"
+                                //                            savePickerPresented.toggle()
+                            }
+                        }
+                    } else {
+                        Text(0.0.formattedForDisplay())
+                    }
+                }.frame(height: 24.0)
+            } header: {
+                Text("Results")
+            }
 		}
 		.formStyle(.grouped)
 		.disabled(recording)
@@ -270,23 +248,93 @@ struct ContentView: View {
 					}
 				} label: {
 					Label {
-						Text(recording ? "Stop" : "Record")
+						Text("Process")
 					} icon: {
 						Image(systemName: recording ? "stop.fill" : "play.fill")
 					}
 				}
-				.disabled(exportURL == nil || events.count == 0)
+				.disabled(exportURL == nil || recording == true)
 			}
 		}
-		.fileExporter(isPresented: $pathPickerPresented, document: [], contentType: .json, defaultFilename: "recording") { result in
-			exportURL = try? result.get()
-			pathPickerPresented = false
-		}
+        .scrollDisabled(true)
+        .fileImporter(isPresented: $pathPickerPresented, allowedContentTypes: [.image], onCompletion: { result in
+            exportURL = try? result.get()
+            pathPickerPresented = false
+        })
 	}
 }
 
 #Preview {
 	ContentView()
+}
+
+struct ResultWrapper: Codable, Hashable {
+    let results: [String: Any]
+
+    init(results: [String: Any]) {
+        self.results = results
+    }
+
+    init(from decoder: any Decoder) throws {
+        fatalError()
+    }
+
+    func encode(to encoder: any Encoder) throws {
+        fatalError()
+    }
+
+    static func == (lhs: Self, rhs: Self) -> Bool {
+        false
+    }
+
+    func hash(into hasher: inout Hasher) {
+        fatalError()
+    }
+}
+
+struct ResultView: View {
+    let results: [String: Any]
+
+    @State
+    var savePickerPresented: Bool = false
+    @State
+    var savePickerDefaultName: String = "benchmark"
+
+    var body: some View {
+        let report = generateReport(from: results)
+
+        ScrollView {
+            Text(report)
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+                .multilineTextAlignment(.leading)
+                .monospaced()
+                .textSelection(.enabled)
+                .padding(4)
+        }
+        .frame(minWidth: 600, minHeight: 360)
+        .navigationTitle("Benchmark Results")
+        .windowFullScreenBehavior(.disabled)
+        .toolbar {
+            ToolbarItem(placement: .confirmationAction) {
+                Button {
+                    savePickerPresented.toggle()
+                } label: {
+                    Label {
+                        Text("Save")
+                    } icon: {
+                        Image(systemName: "square.and.arrow.down")
+                    }
+                }
+            }
+        }
+        .fileExporter(isPresented: $savePickerPresented, document: [], contentType: .plainText, defaultFilename: savePickerDefaultName) { result in
+            do {
+                let outputURL = try result.get()
+                try generateReport(from: results).write(to: outputURL, atomically: true, encoding: .utf8)
+                NSWorkspace.shared.open(outputURL)
+            } catch {}
+        }
+    }
 }
 
 @main
@@ -296,10 +344,19 @@ struct EPSpyApp: App {
     var body: some Scene {
         WindowGroup {
             ContentView()
+                .navigationTitle("CSMark")
 		}
 //		.restorationBehavior(.disabled)
 		.defaultPosition(.center)
 		.windowResizability(.contentSize)
+
+        WindowGroup(id: "report", for: ResultWrapper.self) { $resultWrapper in
+            let results = resultWrapper!.results
+
+            ResultView(results: results)
+        }
+        .restorationBehavior(.disabled)
+        .windowResizability(.contentSize)
     }
 	
 	class AppDelegate: NSObject, NSApplicationDelegate {

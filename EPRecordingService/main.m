@@ -8,6 +8,8 @@
 #import <Foundation/Foundation.h>
 #import "EPRecordingServiceProtocol.h"
 
+#import "Benchmark.h"
+
 @interface XPCListener : NSObject <NSXPCListenerDelegate, EPRecordingServiceProtocol> @end
 @implementation XPCListener
 {
@@ -16,9 +18,7 @@
 
 - (void)start
 {
-	NSLog(@"%@", EPRecorderOptions.class);
-	
-	_listener = [[NSXPCListener alloc] initWithMachServiceName:@"com.LeoNatan.EPRecordingService.xpc"];
+	_listener = [[NSXPCListener alloc] initWithMachServiceName:@"com.LeoNatan.CSMark.xpc"];
 	_listener.delegate = self;
 	[_listener resume];
 	
@@ -29,7 +29,7 @@
 {
 	newConnection.exportedInterface = [NSXPCInterface interfaceWithProtocol:@protocol(EPRecordingServiceProtocol)];
 	newConnection.invalidationHandler = ^{
-		[self stopRecordingWithCompletionHandler:^{}];
+		exit(0);
 	};
 	newConnection.exportedObject = self;
 	[newConnection resume];
@@ -37,14 +37,9 @@
 	return YES;
 }
 
-- (void)startRecordingWithURL:(NSURL *)URL events:(NSArray<NSNumber*>*)events options:(EPRecorderOptions *)options completionHandler:(void (^)(BOOL))completionHandler
+- (void)processImageAtURL:(NSURL *)URL iterations:(NSUInteger)iterations parallel:(BOOL)parallel devicePredicate:(NSString* __nullable)predicate exitAtEnd:(BOOL)exitAtEnd completionHandler:(void (^)(NSDictionary* results, NSError*))completionHandler
 {
-	completionHandler(EPRecorderStartRecording(URL, events, options));
-}
-
-- (void)stopRecordingWithCompletionHandler:(void (^)(void))completionHandler
-{
-	EPRecorderStopRecording(completionHandler);
+    [[Benchmark new] processImageAtURL:URL iterations:iterations parallel:parallel devicePredicate:predicate exitAtEnd:exitAtEnd completionHandler:completionHandler];
 }
 
 @end

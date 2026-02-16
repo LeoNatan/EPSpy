@@ -6,14 +6,19 @@
 //
 
 #import <Foundation/Foundation.h>
-#import "EPRecorderOptions.h"
+#import "EPRecordingServiceProtocol.h"
 
 NS_ASSUME_NONNULL_BEGIN
 
+typedef NS_ENUM(NSUInteger, BenchmarkTargetProcess) {
+    BenchmarkTargetProcessLocal,
+    BenchmarkTargetProcessUserService,
+    BenchmarkTargetProcessRootDaemon,
+};
+
 @interface EPRecordingServiceConnector : NSObject
 
-+ (void)startRecordingWithURL:(NSURL*)URL events:(NSArray<NSNumber*>*)events options:(EPRecorderOptions*)options completionHandler:(void(^)(BOOL))completionHandler;
-+ (void)stopRecordingWithCompletionHandler:(void(^)(void))completionHandler;
++ (void)processImageAtURL:(NSURL*)URL iterations:(NSUInteger)iterations parallel:(BOOL)parallel devicePredicate:(NSString* __nullable)predicate targetProcess:(BenchmarkTargetProcess)targetProcess completionHandler:(void (^)(NSDictionary<NSString*, id>* results, NSError* __nullable))completionHandler;
 
 @end
 

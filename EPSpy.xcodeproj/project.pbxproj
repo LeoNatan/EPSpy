@@ -62,7 +62,7 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
-		39806BE62E0293C6002B83E2 /* EPSpy.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = EPSpy.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		39806BE62E0293C6002B83E2 /* VisionPerformance.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = VisionPerformance.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		39806C072E02970A002B83E2 /* libEndpointSecurity.tbd */ = {isa = PBXFileReference; lastKnownFileType = "sourcecode.text-based-dylib-definition"; name = libEndpointSecurity.tbd; path = usr/lib/libEndpointSecurity.tbd; sourceTree = SDKROOT; };
 		39806C0E2E029AEF002B83E2 /* EPRecorder.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = EPRecorder.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		39AAAF2B2E02FF9D000A3929 /* EPRecordingService */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = EPRecordingService; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -71,13 +71,12 @@
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
-		39806C162E029AEF002B83E2 /* Exceptions for "EPRecorder" folder in "EPRecorder" target */ = {
+		397D74BE2F3E1ADF0073D1C4 /* Exceptions for "EPRecordingService" folder in "EPSpy" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
-			publicHeaders = (
-				EPRecorder.h,
-				EPRecorderOptions.h,
+			membershipExceptions = (
+				Benchmark.m,
 			);
-			target = 39806C0D2E029AEF002B83E2 /* EPRecorder */;
+			target = 39806BE52E0293C6002B83E2 /* EPSpy */;
 		};
 		39F6CD0C2E02DC87003A2BA3 /* Exceptions for "EPSpy" folder in "EPSpy" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
@@ -109,15 +108,13 @@
 		};
 		39806C0F2E029AEF002B83E2 /* EPRecorder */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
-			exceptions = (
-				39806C162E029AEF002B83E2 /* Exceptions for "EPRecorder" folder in "EPRecorder" target */,
-			);
 			path = EPRecorder;
 			sourceTree = "<group>";
 		};
 		39AAAF2C2E02FF9D000A3929 /* EPRecordingService */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			exceptions = (
+				397D74BE2F3E1ADF0073D1C4 /* Exceptions for "EPRecordingService" folder in "EPSpy" target */,
 				39AAAF3A2E0301B5000A3929 /* Exceptions for "EPRecordingService" folder in "Copy Files" phase from "EPSpy" target */,
 			);
 			path = EPRecordingService;
@@ -173,7 +170,7 @@
 		39806BE72E0293C6002B83E2 /* Products */ = {
 			isa = PBXGroup;
 			children = (
-				39806BE62E0293C6002B83E2 /* EPSpy.app */,
+				39806BE62E0293C6002B83E2 /* VisionPerformance.app */,
 				39806C0E2E029AEF002B83E2 /* EPRecorder.framework */,
 				39AAAF2B2E02FF9D000A3929 /* EPRecordingService */,
 			);
@@ -226,7 +223,7 @@
 			packageProductDependencies = (
 			);
 			productName = EPSpy;
-			productReference = 39806BE62E0293C6002B83E2 /* EPSpy.app */;
+			productReference = 39806BE62E0293C6002B83E2 /* VisionPerformance.app */;
 			productType = "com.apple.product-type.application";
 		};
 		39806C0D2E029AEF002B83E2 /* EPRecorder */ = {
@@ -282,7 +279,7 @@
 			attributes = {
 				BuildIndependentTargetsInParallel = 1;
 				LastSwiftUpdateCheck = 1640;
-				LastUpgradeCheck = 1640;
+				LastUpgradeCheck = 2610;
 				TargetAttributes = {
 					39806BE52E0293C6002B83E2 = {
 						CreatedOnToolsVersion = 16.4;
@@ -527,13 +524,13 @@
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
-				MACOSX_DEPLOYMENT_TARGET = 14.0;
+				MACOSX_DEPLOYMENT_TARGET = 15.0;
 				OTHER_LDFLAGS = (
 					"-lstdc++",
 					"-ObjC",
 				);
 				PRODUCT_BUNDLE_IDENTIFIER = com.LeoNatan.EPSpy;
-				PRODUCT_NAME = "$(TARGET_NAME)";
+				PRODUCT_NAME = VisionPerformance;
 				REGISTER_APP_GROUPS = YES;
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_OBJC_BRIDGING_HEADER = "EPSpy/EPSpy-Bridging-Header.h";
@@ -558,13 +555,13 @@
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
-				MACOSX_DEPLOYMENT_TARGET = 14.0;
+				MACOSX_DEPLOYMENT_TARGET = 15.0;
 				OTHER_LDFLAGS = (
 					"-lstdc++",
 					"-ObjC",
 				);
 				PRODUCT_BUNDLE_IDENTIFIER = com.LeoNatan.EPSpy;
-				PRODUCT_NAME = "$(TARGET_NAME)";
+				PRODUCT_NAME = VisionPerformance;
 				REGISTER_APP_GROUPS = YES;
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_OBJC_BRIDGING_HEADER = "EPSpy/EPSpy-Bridging-Header.h";
@@ -592,7 +589,7 @@
 					"@loader_path/Frameworks",
 				);
 				MACH_O_TYPE = staticlib;
-				MACOSX_DEPLOYMENT_TARGET = 14.0;
+				MACOSX_DEPLOYMENT_TARGET = 15.0;
 				MARKETING_VERSION = 1.0;
 				MODULE_VERIFIER_SUPPORTED_LANGUAGES = "objective-c objective-c++";
 				MODULE_VERIFIER_SUPPORTED_LANGUAGE_STANDARDS = "gnu17 gnu++20";
@@ -625,7 +622,7 @@
 					"@loader_path/Frameworks",
 				);
 				MACH_O_TYPE = staticlib;
-				MACOSX_DEPLOYMENT_TARGET = 14.0;
+				MACOSX_DEPLOYMENT_TARGET = 15.0;
 				MARKETING_VERSION = 1.0;
 				MODULE_VERIFIER_SUPPORTED_LANGUAGES = "objective-c objective-c++";
 				MODULE_VERIFIER_SUPPORTED_LANGUAGE_STANDARDS = "gnu17 gnu++20";
@@ -645,7 +642,7 @@
 				CODE_SIGN_STYLE = Automatic;
 				CREATE_INFOPLIST_SECTION_IN_BINARY = YES;
 				DEVELOPMENT_TEAM = "";
-				MACOSX_DEPLOYMENT_TARGET = 14.0;
+				MACOSX_DEPLOYMENT_TARGET = 15.0;
 				OTHER_LDFLAGS = (
 					"-lstdc++",
 					"-ObjC",
@@ -662,7 +659,7 @@
 				CODE_SIGN_STYLE = Automatic;
 				CREATE_INFOPLIST_SECTION_IN_BINARY = YES;
 				DEVELOPMENT_TEAM = "";
-				MACOSX_DEPLOYMENT_TARGET = 14.0;
+				MACOSX_DEPLOYMENT_TARGET = 15.0;
 				OTHER_LDFLAGS = (
 					"-lstdc++",
 					"-ObjC",

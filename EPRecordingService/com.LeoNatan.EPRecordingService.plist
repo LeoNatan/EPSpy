@@ -10,7 +10,7 @@
 	<true/>
 	<key>MachServices</key>
 	<dict>
-		<key>com.LeoNatan.EPRecordingService.xpc</key>
+		<key>com.LeoNatan.CSMark.xpc</key>
 		<true/>
 	</dict>
 </dict>
