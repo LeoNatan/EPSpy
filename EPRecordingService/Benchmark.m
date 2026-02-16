@@ -104,7 +104,6 @@
         request.preferBackgroundProcessing = NO;
         request.revision = VNRequest.currentRevision;
         [request setComputeDevice:deviceToUse forComputeStage:VNComputeStageMain];
-
 //        [request setComputeDevice:deviceToUse forComputeStage:VNComputeStagePostProcessing];
 
         VNImageRequestHandler* handler = [[VNImageRequestHandler alloc] initWithURL:URL options:@{}];
@@ -117,7 +116,6 @@
         }
 
         NSTimeInterval innerEnd = NSDate.timeIntervalSinceReferenceDate;
-
         results[iteration] = @(innerEnd - innerStart);
     });
 
@@ -138,6 +136,8 @@
     NSMutableDictionary* device = [NSMutableDictionary new];
     device[@"hw_model"] = [self _hwModel];
     device[@"hw_machine"] = [self _hwMachine];
+	device[@"os"] = NSProcessInfo.processInfo.operatingSystemVersionString;
+	device[@"visionRevision"] = @(VNRequest.currentRevision);
     rv[@"hostMachine"] = device;
 
     completionHandler(rv, _error);

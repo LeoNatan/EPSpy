@@ -106,11 +106,6 @@
 			path = EPSpy;
 			sourceTree = "<group>";
 		};
-		39806C0F2E029AEF002B83E2 /* EPRecorder */ = {
-			isa = PBXFileSystemSynchronizedRootGroup;
-			path = EPRecorder;
-			sourceTree = "<group>";
-		};
 		39AAAF2C2E02FF9D000A3929 /* EPRecordingService */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			exceptions = (
@@ -160,7 +155,6 @@
 			isa = PBXGroup;
 			children = (
 				39806BE82E0293C6002B83E2 /* EPSpy */,
-				39806C0F2E029AEF002B83E2 /* EPRecorder */,
 				39AAAF2C2E02FF9D000A3929 /* EPRecordingService */,
 				39806C062E02970A002B83E2 /* Frameworks */,
 				39806BE72E0293C6002B83E2 /* Products */,
@@ -238,9 +232,6 @@
 			buildRules = (
 			);
 			dependencies = (
-			);
-			fileSystemSynchronizedGroups = (
-				39806C0F2E029AEF002B83E2 /* EPRecorder */,
 			);
 			name = EPRecorder;
 			packageProductDependencies = (

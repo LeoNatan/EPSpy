@@ -70,7 +70,7 @@ func generateReport(from results: [String: Any]) -> String {
     let totalDuration = results["totalDuration"] as? Double
     let runResults = results["results"] as? [Double]
     let computeDevices = results["computeDevices"] as? [String: Any]
-//    let hostMachine = results["hostMachine"] as? [String: Any]
+    let hostMachine = results["hostMachine"] as? [String: Any]
     let runInformation = results["runInformation"] as? [String: Any]
 
     guard let totalDuration else {
@@ -87,6 +87,23 @@ func generateReport(from results: [String: Any]) -> String {
     if let runInformation, let processTarget = runInformation["processTarget"] as? UInt, let processTarget = BenchmarkTargetProcess(rawValue: processTarget) {
         rv.append("Target Process: \(processTarget.description.capitalized)")
     }
+
+	if let hostMachine {
+		rv.append("\nHost Environment:")
+		if let os = hostMachine["os"] as? String {
+			rv.append("\tmacOS \(os)")
+		}
+		if let visionRevision = hostMachine["visionRevision"] as? Int {
+			rv.append("\tText Recognition Revision: \(visionRevision)")
+		}
+		if let hw_model = hostMachine["hw_model"] as? String {
+			rv.append("\tModel: \(hw_model)")
+		}
+		if let hw_machine = hostMachine["hw_machine"] as? String {
+			rv.append("\tMachine: \(hw_machine)")
+		}
+	}
+
     if let computeDevices {
         rv.append("\nCompute Devices:")
         if let availableDevices = computeDevices["availableDevices"] as? [String] {
@@ -115,7 +132,7 @@ func generateReport(from results: [String: Any]) -> String {
             let padded = NSString(format: "%\(totalStr.count)u" as NSString, result.offset + 1)
             rv.append("\t\(padded): \(result.element.formattedForDisplay())")
         }
-        rv.append("Min: \(runResults.min()!.formattedForDisplay())")
+        rv.append("\nMin: \(runResults.min()!.formattedForDisplay())")
         rv.append("Max: \(runResults.max()!.formattedForDisplay())")
         rv.append("Average: \(runResults.average().formattedForDisplay())")
         rv.append("Median: \(runResults.median().formattedForDisplay())")
@@ -224,12 +241,10 @@ struct ContentView: View {
                             Spacer()
                             Button("Results") {
                                 openWindow(id: "report", value: ResultWrapper(results: results))
-                                //                            savePickerDefaultName = "benchmark"
-                                //                            savePickerPresented.toggle()
                             }
                         }
                     } else {
-                        Text(0.0.formattedForDisplay())
+						EmptyView()
                     }
                 }.frame(height: 24.0)
             } header: {

@@ -16,7 +16,7 @@
             <BuildableReference
                BuildableIdentifier = "primary"
                BlueprintIdentifier = "39806BE52E0293C6002B83E2"
-               BuildableName = "EPSpy.app"
+               BuildableName = "VisionPerformance.app"
                BlueprintName = "EPSpy"
                ReferencedContainer = "container:EPSpy.xcodeproj">
             </BuildableReference>
@@ -45,7 +45,7 @@
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "39806BE52E0293C6002B83E2"
-            BuildableName = "EPSpy.app"
+            BuildableName = "VisionPerformance.app"
             BlueprintName = "EPSpy"
             ReferencedContainer = "container:EPSpy.xcodeproj">
          </BuildableReference>
@@ -62,7 +62,7 @@
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "39806BE52E0293C6002B83E2"
-            BuildableName = "EPSpy.app"
+            BuildableName = "VisionPerformance.app"
             BlueprintName = "EPSpy"
             ReferencedContainer = "container:EPSpy.xcodeproj">
          </BuildableReference>
