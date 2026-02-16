@@ -18,7 +18,7 @@ typedef NS_ENUM(NSUInteger, BenchmarkTargetProcess) {
 
 @interface EPRecordingServiceConnector : NSObject
 
-+ (void)processImageAtURL:(NSURL*)URL iterations:(NSUInteger)iterations parallel:(BOOL)parallel devicePredicate:(NSString* __nullable)predicate targetProcess:(BenchmarkTargetProcess)targetProcess completionHandler:(void (^)(NSDictionary<NSString*, id>* results, NSError* __nullable))completionHandler;
++ (void)processImageAtURL:(NSURL*)URL iterations:(NSUInteger)iterations parallel:(BOOL)parallel devicePredicate:(NSString* __nullable)predicate inputScale:(double)scale targetProcess:(BenchmarkTargetProcess)targetProcess completionHandler:(void (^)(NSDictionary<NSString*, id>* results, NSError* __nullable))completionHandler;
 
 @end
 

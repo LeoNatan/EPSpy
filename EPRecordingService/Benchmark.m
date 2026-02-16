@@ -50,7 +50,41 @@
     return rv;
 }
 
-- (void)processImageAtURL:(NSURL *)URL iterations:(NSUInteger)iterations parallel:(BOOL)parallel devicePredicate:(NSString* __nullable)predicate exitAtEnd:(BOOL)exitAtEnd completionHandler:(void (^)(NSDictionary* results, NSError*))completionHandler
+- (VNImageRequestHandler*)_handlerForURL:(NSURL*)URL scale:(double)scale timing:(NSMutableArray*)timing
+{
+	if(scale == 1.0)
+	{
+		return [[VNImageRequestHandler alloc] initWithURL:URL options:@{}];
+	}
+
+	NSTimeInterval innerStart = NSDate.timeIntervalSinceReferenceDate;
+
+	CGImageSourceRef src = CGImageSourceCreateWithURL((__bridge CFURLRef)URL, NULL);
+	NSDictionary* props = CFBridgingRelease(CGImageSourceCopyPropertiesAtIndex(src, 0, NULL));
+	NSInteger width = [props[@"PixelWidth"] integerValue];
+	NSInteger height = [props[@"PixelHeight"] integerValue];
+	NSInteger max = MAX(width, height);
+	NSInteger scaled = round(scale * max);
+
+	CGImageRef img = CGImageSourceCreateThumbnailAtIndex(src, 0, (__bridge CFDictionaryRef)@{
+		(__bridge id)kCGImageSourceCreateThumbnailFromImageAlways: @1,
+		(__bridge id)kCGImageSourceCreateThumbnailWithTransform: @1,
+		(__bridge id)kCGImageSourceThumbnailMaxPixelSize: @(scaled)
+	});
+
+	id rv = [[VNImageRequestHandler alloc] initWithCGImage:img orientation:kCGImagePropertyOrientationUp options:@{}];
+
+	CGImageRelease(img);
+	CFRelease(src);
+
+	NSTimeInterval innerEnd = NSDate.timeIntervalSinceReferenceDate;
+
+	[timing addObject:@(innerEnd - innerStart)];
+
+	return rv;
+}
+
+- (void)processImageAtURL:(NSURL *)URL iterations:(NSUInteger)iterations parallel:(BOOL)parallel devicePredicate:(NSString* __nullable)predicate inputScale:(double)scale exitAtEnd:(BOOL)exitAtEnd completionHandler:(void (^)(NSDictionary* results, NSError*))completionHandler
 {
     void (^exitIfNeeded)(void) = ^ {
         if(exitAtEnd)
@@ -87,9 +121,13 @@
 
     NSTimeInterval start = NSDate.timeIntervalSinceReferenceDate;
 
+	__block NSArray<VNRecognizedTextObservation*>* parsedResults;
+
     dispatch_apply(iterations, queue, ^(size_t iteration) {
         dispatch_group_t group = dispatch_group_create();
         dispatch_group_enter(group);
+
+		NSMutableArray* perItem = [NSMutableArray new];
 
         VNRecognizeTextRequest* request = [[VNRecognizeTextRequest alloc] initWithCompletionHandler:^(VNRequest * _Nonnull request, NSError * _Nullable error) {
             if(error)
@@ -99,14 +137,14 @@
 
             dispatch_group_leave(group);
         }];
-        request.recognitionLanguages = @[@"en"];
-        request.automaticallyDetectsLanguage = NO;
+//        request.recognitionLanguages = @[@"en"];
+//        request.automaticallyDetectsLanguage = NO;
         request.preferBackgroundProcessing = NO;
         request.revision = VNRequest.currentRevision;
         [request setComputeDevice:deviceToUse forComputeStage:VNComputeStageMain];
 //        [request setComputeDevice:deviceToUse forComputeStage:VNComputeStagePostProcessing];
 
-        VNImageRequestHandler* handler = [[VNImageRequestHandler alloc] initWithURL:URL options:@{}];
+		VNImageRequestHandler* handler = [self _handlerForURL:URL scale:scale timing:perItem];
 
         NSTimeInterval innerStart = NSDate.timeIntervalSinceReferenceDate;
 
@@ -116,7 +154,13 @@
         }
 
         NSTimeInterval innerEnd = NSDate.timeIntervalSinceReferenceDate;
-        results[iteration] = @(innerEnd - innerStart);
+		[perItem addObject:@(innerEnd - innerStart)];
+		results[iteration] = perItem;
+
+		if(iteration == 0)
+		{
+			parsedResults = request.results;
+		}
     });
 
     NSTimeInterval end = NSDate.timeIntervalSinceReferenceDate;
@@ -139,6 +183,23 @@
 	device[@"os"] = NSProcessInfo.processInfo.operatingSystemVersionString;
 	device[@"visionRevision"] = @(VNRequest.currentRevision);
     rv[@"hostMachine"] = device;
+
+	NSMutableArray<NSDictionary<NSString*, id>*>* parsedText = [NSMutableArray new];
+	for (VNRecognizedTextObservation* to in parsedResults)
+	{
+		NSArray<VNRecognizedText*>* arr = [to topCandidates:1];
+		if(arr.count == 0)
+		{
+			continue;
+		}
+		VNRecognizedText* toUse = arr[0];
+
+		[parsedText addObject:@{
+			@"confidence": @(toUse.confidence),
+			@"string": toUse.string
+		}];
+	}
+	rv[@"parseResults"] = parsedText;
 
     completionHandler(rv, _error);
     exitIfNeeded();

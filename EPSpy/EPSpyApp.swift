@@ -38,7 +38,6 @@ extension BenchmarkTargetProcess: CustomStringConvertible {
 }
 
 extension Array where Element: FloatingPoint {
-
     func sum() -> Element {
         return self.reduce(0, +)
     }
@@ -61,17 +60,54 @@ extension Array where Element: FloatingPoint {
             return (sortedArray[count / 2] + sortedArray[count / 2 - 1]) / (2.0 as! Element)
         }
     }
+}
 
+extension Array where Element == [Double] {
+	public func min() -> Double {
+		sums().min()!
+	}
+
+	public func max() -> Double {
+		sums().max()!
+	}
+
+	func sums() -> [Double] {
+		map { $0.sum() }
+	}
+
+	func sum() -> Double {
+		return sums().reduce(0, +)
+	}
+
+	func average() -> Double {
+		return self.sum() / Double(self.count)
+	}
+
+	func stdDev() -> Double {
+		let mean = self.average()
+		let v = sums().reduce(0, { $0 + ($1-mean)*($1-mean) })
+		return sqrt(v / (Double(self.count) - 1))
+	}
+
+	func median() -> Double {
+		let sortedArray = sums().sorted()
+		if count % 2 != 0 {
+			return sortedArray[count / 2]
+		} else {
+			return (sortedArray[count / 2] + sortedArray[count / 2 - 1]) / 2.0
+		}
+	}
 }
 
 func generateReport(from results: [String: Any]) -> String {
     var rv = [String]()
 
     let totalDuration = results["totalDuration"] as? Double
-    let runResults = results["results"] as? [Double]
+    let runResults = results["results"] as? [[Double]]
     let computeDevices = results["computeDevices"] as? [String: Any]
     let hostMachine = results["hostMachine"] as? [String: Any]
     let runInformation = results["runInformation"] as? [String: Any]
+	let parsedText = results["parseResults"] as? [[String: Any]]
 
     guard let totalDuration else {
         return ""
@@ -81,6 +117,9 @@ func generateReport(from results: [String: Any]) -> String {
     if let runInformation, let iterations = runInformation["iterations"] as? Int {
         rv.append("Iterations: \(iterations)")
     }
+	if let runInformation, let inputScale = runInformation["inputScale"] as? Double {
+		rv.append("Input Scale: \(inputScale.formatted(.percent.precision(.fractionLength(0))))")
+	}
     if let runInformation, let parallel = runInformation["parallel"] as? Bool {
         rv.append("Parallel: \(parallel ? "Yes" : "No")")
     }
@@ -89,55 +128,85 @@ func generateReport(from results: [String: Any]) -> String {
     }
 
 	if let hostMachine {
-		rv.append("\nHost Environment:")
+		rv.append("\nHost Environment")
+		rv.append("----------------\n")
 		if let os = hostMachine["os"] as? String {
-			rv.append("\tmacOS \(os)")
+			rv.append("macOS \(os)")
 		}
 		if let visionRevision = hostMachine["visionRevision"] as? Int {
-			rv.append("\tText Recognition Revision: \(visionRevision)")
+			rv.append("Text Recognition Revision: \(visionRevision)")
 		}
 		if let hw_model = hostMachine["hw_model"] as? String {
-			rv.append("\tModel: \(hw_model)")
+			rv.append("Model: \(hw_model)")
 		}
 		if let hw_machine = hostMachine["hw_machine"] as? String {
-			rv.append("\tMachine: \(hw_machine)")
+			rv.append("Machine: \(hw_machine)")
 		}
 	}
 
     if let computeDevices {
-        rv.append("\nCompute Devices:")
+        rv.append("\nCompute Devices")
+		rv.append("---------------\n")
         if let availableDevices = computeDevices["availableDevices"] as? [String] {
-            rv.append("\tAvailable:")
+            rv.append("Available:")
             for device in availableDevices.sorted() {
-                rv.append("\t\t\(device)")
+                rv.append("\t\(device)")
             }
         }
         if let supportedDevices = computeDevices["supportedDevicesMain"] as? [String] {
-            rv.append("\tSupported:")
+            rv.append("Supported:")
             for device in supportedDevices.sorted() {
-                rv.append("\t\t\(device)")
+                rv.append("\t\(device)")
             }
         }
         if let deviceUsed = computeDevices["deviceUsed"] as? String {
-            rv.append("\tUsed: \(deviceUsed)")
+            rv.append("Used: \(deviceUsed)")
         } else {
-            rv.append("\tUsed: Auto")
+            rv.append("Used: Auto")
         }
     }
 
     if let runResults, runResults.count > 0 {
         let totalStr = "\(runResults.count)"
-        rv.append("\nIterations:")
+        rv.append("\nIterations")
+		rv.append("----------\n")
         for result in runResults.enumerated() {
             let padded = NSString(format: "%\(totalStr.count)u" as NSString, result.offset + 1)
-            rv.append("\t\(padded): \(result.element.formattedForDisplay())")
+			
+			var times = [String]()
+			for time in result.element {
+				times.append(time.formattedForDisplay())
+			}
+			if(times.count == 1) {
+				rv.append("\(padded): \(times.joined(separator: " + "))")
+			} else {
+				rv.append("\(padded): \(result.element.sum().formattedForDisplay()) (\(times.joined(separator: " + ")))")
+			}
+
         }
-        rv.append("\nMin: \(runResults.min()!.formattedForDisplay())")
-        rv.append("Max: \(runResults.max()!.formattedForDisplay())")
+        rv.append("\nMin: \(runResults.min().formattedForDisplay())")
+        rv.append("Max: \(runResults.max().formattedForDisplay())")
         rv.append("Average: \(runResults.average().formattedForDisplay())")
         rv.append("Median: \(runResults.median().formattedForDisplay())")
         rv.append("Standard Deviation: \(runResults.stdDev().formattedForDisplay())")
     }
+
+	if let parsedText {
+		rv.append("\nParsed Text")
+		rv.append("-----------\n")
+
+		var strings = [String]()
+		for parsed in parsedText {
+			guard let confidence = parsed["confidence"] as? Float,
+				  let string = parsed["string"] as? String else {
+				continue
+			}
+
+			let padded = NSString(format: "%4s" as NSString, (confidence.formatted(.percent.precision(.fractionLength(0))) as NSString).utf8String!)
+			strings.append("(\(padded)) \(string)")
+		}
+		rv.append(strings.joined(separator: "\n"))
+	}
 
     return rv.joined(separator: "\n")
 }
@@ -171,6 +240,8 @@ struct ContentView: View {
     var devicePredicate: String?
     @AppStorage("runInParallel")
     var runInParallel: Bool = false
+	@AppStorage("inputScale")
+	var inputScale: Double = 1.0
 
     @MainActor
 	func toggleRecording() async {
@@ -180,6 +251,7 @@ struct ContentView: View {
                                                                          iterations: UInt(processIterations),
                                                                          parallel: runInParallel,
                                                                          devicePredicate: devicePredicate,
+																		 inputScale: inputScale,
                                                                          targetProcess: runInDaemon ? .rootDaemon : .local)
         } catch {
             NSAlert(error: error).runModal()
@@ -204,6 +276,12 @@ struct ContentView: View {
 				Text("Image to Process")
 			}
             Section {
+				HStack {
+					Text("Input Scale")
+					Spacer()
+					Slider(value: $inputScale, in: 0.1...1.0, step: 0.05)
+					Text(inputScale.formatted(.percent.precision(.fractionLength(0)))).frame(width: 40)
+				}
                 Toggle(isOn: $runInDaemon) {
                     Text("Run in Daemon")
                 }
@@ -235,7 +313,7 @@ struct ContentView: View {
                     if let results, let duration = results["totalDuration"] as? Double {
                         HStack {
                             Text(duration.formattedForDisplay())
-                            if let results = results["results"] as? [Double] {
+                            if let results = results["results"] as? [[Double]] {
                                 Text("(\(results.count) Iterations)")
                             }
                             Spacer()
@@ -318,29 +396,26 @@ struct ResultView: View {
     var body: some View {
         let report = generateReport(from: results)
 
-        ScrollView {
-            Text(report)
-                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-                .multilineTextAlignment(.leading)
-                .monospaced()
-                .textSelection(.enabled)
-                .padding(4)
-        }
-        .frame(minWidth: 600, minHeight: 360)
-        .navigationTitle("Benchmark Results")
-        .windowFullScreenBehavior(.disabled)
-        .toolbar {
-            ToolbarItem(placement: .confirmationAction) {
-                Button {
-                    savePickerPresented.toggle()
-                } label: {
-                    Label {
-                        Text("Save")
-                    } icon: {
-                        Image(systemName: "square.and.arrow.down")
-                    }
-                }
-            }
+		TextEditor(text: Binding.constant(report))
+			.frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+			.multilineTextAlignment(.leading)
+			.monospaced()
+			.textSelection(.enabled)
+			.frame(minWidth: 600, minHeight: 360)
+			.navigationTitle("Benchmark Results")
+			.windowFullScreenBehavior(.disabled)
+			.toolbar {
+				ToolbarItem(placement: .confirmationAction) {
+					Button {
+						savePickerPresented.toggle()
+					} label: {
+						Label {
+							Text("Save")
+						} icon: {
+							Image(systemName: "square.and.arrow.down")
+						}
+					}
+				}
         }
         .fileExporter(isPresented: $savePickerPresented, document: [], contentType: .plainText, defaultFilename: savePickerDefaultName) { result in
             do {
@@ -370,6 +445,9 @@ struct EPSpyApp: App {
 
             ResultView(results: results)
         }
+		.commands {
+			TextEditingCommands()
+		}
         .restorationBehavior(.disabled)
         .windowResizability(.contentSize)
     }

@@ -37,9 +37,9 @@
 	return YES;
 }
 
-- (void)processImageAtURL:(NSURL *)URL iterations:(NSUInteger)iterations parallel:(BOOL)parallel devicePredicate:(NSString* __nullable)predicate exitAtEnd:(BOOL)exitAtEnd completionHandler:(void (^)(NSDictionary* results, NSError*))completionHandler
+- (void)processImageAtURL:(NSURL *)URL iterations:(NSUInteger)iterations parallel:(BOOL)parallel devicePredicate:(NSString* __nullable)predicate  inputScale:(double)scale exitAtEnd:(BOOL)exitAtEnd completionHandler:(void (^)(NSDictionary* results, NSError*))completionHandler
 {
-    [[Benchmark new] processImageAtURL:URL iterations:iterations parallel:parallel devicePredicate:predicate exitAtEnd:exitAtEnd completionHandler:completionHandler];
+	[[Benchmark new] processImageAtURL:URL iterations:iterations parallel:parallel devicePredicate:predicate inputScale:scale exitAtEnd:exitAtEnd completionHandler:completionHandler];
 }
 
 @end
