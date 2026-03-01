@@ -9,6 +9,7 @@
 @import CoreML;
 @import Vision;
 @import Darwin;
+@import CoreImage;
 
 #define ln_dispatch_queue_create_autoreleasing(name, attr) dispatch_queue_create(name, dispatch_queue_attr_make_with_autorelease_frequency(attr, DISPATCH_AUTORELEASE_FREQUENCY_WORK_ITEM))
 
@@ -54,9 +55,35 @@
 {
 	if(scale == 1.0)
 	{
+        //Use the URL directly
+
 		return [[VNImageRequestHandler alloc] initWithURL:URL options:@{}];
 	}
 
+    if(scale > 1.0)
+    {
+        NSTimeInterval innerStart = NSDate.timeIntervalSinceReferenceDate;
+
+        CIImage* ciImage = [CIImage imageWithContentsOfURL:URL];
+        CVPixelBufferRef buffer = NULL;
+        CVPixelBufferCreate(kCFAllocatorDefault, ciImage.extent.size.width, ciImage.extent.size.height, k32ARGBPixelFormat, (__bridge CFDictionaryRef)@{
+            (__bridge id)kCVPixelBufferCGImageCompatibilityKey: @YES,
+            (__bridge id)kCVPixelBufferCGBitmapContextCompatibilityKey: @YES
+        }, &buffer);
+        CIContext* ctx = [CIContext new];
+        [ctx render:ciImage toCVPixelBuffer:buffer];
+
+        id rv = [[VNImageRequestHandler alloc] initWithCVPixelBuffer:buffer options:@{}];
+
+        CFRelease(buffer);
+
+        NSTimeInterval innerEnd = NSDate.timeIntervalSinceReferenceDate;
+        [timing addObject:@(innerEnd - innerStart)];
+
+        return rv;
+    }
+
+    //Use CGImageSource to scale the image
 	NSTimeInterval innerStart = NSDate.timeIntervalSinceReferenceDate;
 
 	CGImageSourceRef src = CGImageSourceCreateWithURL((__bridge CFURLRef)URL, NULL);
@@ -84,7 +111,7 @@
 	return rv;
 }
 
-- (void)processImageAtURL:(NSURL *)URL iterations:(NSUInteger)iterations parallel:(BOOL)parallel devicePredicate:(NSString* __nullable)predicate inputScale:(double)scale exitAtEnd:(BOOL)exitAtEnd completionHandler:(void (^)(NSDictionary* results, NSError*))completionHandler
+- (void)processImageAtURL:(NSURL *)URL iterations:(NSUInteger)iterations parallel:(BOOL)parallel devicePredicate:(NSString* __nullable)predicate inputScale:(double)scale correct:(BOOL)correct exitAtEnd:(BOOL)exitAtEnd completionHandler:(void (^)(NSDictionary* results, NSError*))completionHandler
 {
     void (^exitIfNeeded)(void) = ^ {
         if(exitAtEnd)
@@ -139,6 +166,7 @@
         }];
 //        request.recognitionLanguages = @[@"en"];
 //        request.automaticallyDetectsLanguage = NO;
+        request.usesLanguageCorrection = correct;
         request.preferBackgroundProcessing = NO;
         request.revision = VNRequest.currentRevision;
         [request setComputeDevice:deviceToUse forComputeStage:VNComputeStageMain];

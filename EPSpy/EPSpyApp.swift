@@ -242,6 +242,8 @@ struct ContentView: View {
     var runInParallel: Bool = false
 	@AppStorage("inputScale")
 	var inputScale: Double = 1.0
+    @AppStorage("correct")
+    var correct: Bool = true
 
     @MainActor
 	func toggleRecording() async {
@@ -252,6 +254,7 @@ struct ContentView: View {
                                                                          parallel: runInParallel,
                                                                          devicePredicate: devicePredicate,
 																		 inputScale: inputScale,
+                                                                         correct: correct,
                                                                          targetProcess: runInDaemon ? .rootDaemon : .local)
         } catch {
             NSAlert(error: error).runModal()
@@ -279,9 +282,18 @@ struct ContentView: View {
 				HStack {
 					Text("Input Scale")
 					Spacer()
-					Slider(value: $inputScale, in: 0.1...1.0, step: 0.05)
-					Text(inputScale.formatted(.percent.precision(.fractionLength(0)))).frame(width: 40)
+                    Slider(value: $inputScale, in: 0.1...1.05, step: 0.05)
+                    if inputScale > 1.0 {
+                        Text("CV").frame(width: 40)
+                    } else if inputScale == 1.0 {
+                        Text("URL").frame(width: 40)
+                    } else {
+                        Text(inputScale.formatted(.percent.precision(.fractionLength(0)))).frame(width: 40)
+                    }
 				}
+                Toggle(isOn: $correct) {
+                    Text("Uses Language Correction")
+                }
                 Toggle(isOn: $runInDaemon) {
                     Text("Run in Daemon")
                 }
@@ -350,7 +362,7 @@ struct ContentView: View {
 			}
 		}
         .scrollDisabled(true)
-        .fileImporter(isPresented: $pathPickerPresented, allowedContentTypes: [.image], onCompletion: { result in
+        .fileImporter(isPresented: $pathPickerPresented, allowedContentTypes: [.image, .pdf], onCompletion: { result in
             exportURL = try? result.get()
             pathPickerPresented = false
         })

@@ -18,7 +18,7 @@ static NSXPCConnection* currentConnection = nil;
 
 @implementation EPRecordingServiceConnector
 
-+ (void)processImageAtURL:(NSURL*)URL iterations:(NSUInteger)iterations parallel:(BOOL)parallel devicePredicate:(NSString* __nullable)predicate inputScale:(double)scale targetProcess:(BenchmarkTargetProcess)targetProcess completionHandler:(void (^)(NSDictionary<NSString*, id>* results, NSError* __nullable))completionHandler
++ (void)processImageAtURL:(NSURL*)URL iterations:(NSUInteger)iterations parallel:(BOOL)parallel devicePredicate:(NSString* __nullable)predicate inputScale:(double)scale correct:(BOOL)correct targetProcess:(BenchmarkTargetProcess)targetProcess completionHandler:(void (^)(NSDictionary<NSString*, id>* results, NSError* __nullable))completionHandler
 {
     completionHandler = ^(NSDictionary* results, NSError* error) {
         NSMutableDictionary* run = [NSMutableDictionary new];
@@ -38,7 +38,7 @@ static NSXPCConnection* currentConnection = nil;
         dispatch_queue_t local = ln_dispatch_queue_create_autoreleasing("local benchmark", NULL);
 
         dispatch_async(local, ^{
-			[[Benchmark new] processImageAtURL:URL iterations:iterations parallel:parallel devicePredicate:predicate inputScale:scale exitAtEnd:NO completionHandler:completionHandler];
+            [[Benchmark new] processImageAtURL:URL iterations:iterations parallel:parallel devicePredicate:predicate inputScale:scale correct:correct exitAtEnd:NO completionHandler:completionHandler];
         });
 
         return;
@@ -72,7 +72,7 @@ static NSXPCConnection* currentConnection = nil;
 			NSLog(@"Error: %@", error);
             completionHandler(nil, error);
 		}];
-		[proxy processImageAtURL:URL iterations:iterations parallel:parallel devicePredicate:predicate inputScale:scale exitAtEnd:YES completionHandler:completionHandler];
+        [proxy processImageAtURL:URL iterations:iterations parallel:parallel devicePredicate:predicate inputScale:scale correct:correct exitAtEnd:YES completionHandler:completionHandler];
 
 		return;
 	}
