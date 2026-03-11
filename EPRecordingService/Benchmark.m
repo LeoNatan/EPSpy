@@ -70,7 +70,28 @@
             (__bridge id)kCVPixelBufferCGImageCompatibilityKey: @YES,
             (__bridge id)kCVPixelBufferCGBitmapContextCompatibilityKey: @YES
         }, &buffer);
-        CIContext* ctx = [CIContext new];
+
+        static CIContext* ctx = nil;
+        static dispatch_once_t onceToken;
+        dispatch_once(&onceToken, ^{
+            id<MTLDevice> mtlDevice = MTLCreateSystemDefaultDevice();
+            if (mtlDevice != nil)
+            {
+                // Metal-backed context provides optimal GPU utilization
+                ctx = [CIContext contextWithMTLDevice:mtlDevice options:@{
+                    kCIContextCacheIntermediates: @NO,  // Don't cache intermediates - reduces memory overhead
+                    kCIContextUseSoftwareRenderer: @NO  // Force hardware (GPU) rendering
+                }];
+            }
+            else
+            {
+                // Fallback for systems without Metal support (shouldn't happen on modern Macs)
+                ctx = [CIContext contextWithOptions:@{
+                    kCIContextUseSoftwareRenderer: @NO
+                }];
+            }
+        });
+
         [ctx render:ciImage toCVPixelBuffer:buffer];
 
         id rv = [[VNImageRequestHandler alloc] initWithCVPixelBuffer:buffer options:@{}];

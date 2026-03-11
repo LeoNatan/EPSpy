@@ -265,23 +265,23 @@ struct ContentView: View {
     @Environment(\.openWindow) private var openWindow
 
 	var body: some View {
-		Form {
-			Section {
-				HStack {
-					Text(exportURL?.path ?? "<No image selected>")
-						.foregroundStyle(exportURL != nil ? Color(NSColor.controlTextColor) : .red)
-					Spacer()
-					Button("Browse…") {
-						pathPickerPresented = true
-					}
-				}
-			} header: {
-				Text("Image to Process")
-			}
+        Form {
             Section {
-				HStack {
-					Text("Input Scale")
-					Spacer()
+                HStack {
+                    Text(exportURL?.path ?? "<No image selected>")
+                        .foregroundStyle(exportURL != nil ? Color(NSColor.controlTextColor) : .red)
+                    Spacer()
+                    Button("Browse…") {
+                        pathPickerPresented = true
+                    }
+                }
+            } header: {
+                Text("Image to Process")
+            }
+            Section {
+                HStack {
+                    Text("Input Scale")
+                    Spacer()
                     Slider(value: $inputScale, in: 0.1...1.05, step: 0.05)
                     if inputScale > 1.0 {
                         Text("CV").frame(width: 40)
@@ -290,20 +290,14 @@ struct ContentView: View {
                     } else {
                         Text(inputScale.formatted(.percent.precision(.fractionLength(0)))).frame(width: 40)
                     }
-				}
+                }
                 Toggle(isOn: $correct) {
                     Text("Uses Language Correction")
                 }
-                Toggle(isOn: $runInDaemon) {
-                    Text("Run in Daemon")
-                }
-                Picker("Device", selection: $devicePredicate) {
-                    Text("Auto").tag(nil as String?)
-                    Divider()
-                    Text("CPU").tag("cpu" as String?)
-                    Text("GPU").tag("gpu" as String?)
-                    Text("Neural Engine").tag("neural" as String?)
-                }.pickerStyle(.menu)
+            } header: {
+                Text("Settings")
+            }
+            Section {
                 HStack {
                     Text("Iterations")
                     Spacer()
@@ -317,8 +311,16 @@ struct ContentView: View {
                 Toggle(isOn: $runInParallel) {
                     Text("Run in Parallel")
                 }
-            } header: {
-                Text("Settings")
+                Picker("Device", selection: $devicePredicate) {
+                    Text("Auto").tag(nil as String?)
+                    Divider()
+                    Text("CPU").tag("cpu" as String?)
+                    Text("GPU").tag("gpu" as String?)
+                    Text("Neural Engine").tag("neural" as String?)
+                }.pickerStyle(.menu)
+                Toggle(isOn: $runInDaemon) {
+                    Text("Run in Daemon")
+                }
             }
             Section {
                 VStack {
