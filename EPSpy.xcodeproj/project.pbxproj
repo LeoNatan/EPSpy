@@ -40,13 +40,23 @@
 			name = "Embed Frameworks";
 			runOnlyForDeploymentPostprocessing = 0;
 		};
-		39AAAF322E02FFBA000A3929 /* CopyFiles */ = {
+		399B136B2F6B1C020047670F /* CopyFiles */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = Contents/Library/LaunchAgents;
+			dstSubfolderSpec = 1;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		39AAAF322E02FFBA000A3929 /* Copy Files */ = {
 			isa = PBXCopyFilesBuildPhase;
 			buildActionMask = 2147483647;
 			dstPath = Contents/Library/LaunchDaemons;
 			dstSubfolderSpec = 1;
 			files = (
 			);
+			name = "Copy Files";
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 		39AAAF3B2E0301B8000A3929 /* CopyFiles */ = {
@@ -88,9 +98,16 @@
 /* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
 /* Begin PBXFileSystemSynchronizedGroupBuildPhaseMembershipExceptionSet section */
+		399B136D2F6B1C160047670F /* Exceptions for "EPRecordingService" folder in "Copy Files" phase from "EPSpy" target */ = {
+			isa = PBXFileSystemSynchronizedGroupBuildPhaseMembershipExceptionSet;
+			buildPhase = 399B136B2F6B1C020047670F /* CopyFiles */;
+			membershipExceptions = (
+				com.LeoNatan.EPRecordingService.plist,
+			);
+		};
 		39AAAF3A2E0301B5000A3929 /* Exceptions for "EPRecordingService" folder in "Copy Files" phase from "EPSpy" target */ = {
 			isa = PBXFileSystemSynchronizedGroupBuildPhaseMembershipExceptionSet;
-			buildPhase = 39AAAF322E02FFBA000A3929 /* CopyFiles */;
+			buildPhase = 39AAAF322E02FFBA000A3929 /* Copy Files */;
 			membershipExceptions = (
 				com.LeoNatan.EPRecordingService.plist,
 			);
@@ -111,6 +128,7 @@
 			exceptions = (
 				397D74BE2F3E1ADF0073D1C4 /* Exceptions for "EPRecordingService" folder in "EPSpy" target */,
 				39AAAF3A2E0301B5000A3929 /* Exceptions for "EPRecordingService" folder in "Copy Files" phase from "EPSpy" target */,
+				399B136D2F6B1C160047670F /* Exceptions for "EPRecordingService" folder in "Copy Files" phase from "EPSpy" target */,
 			);
 			path = EPRecordingService;
 			sourceTree = "<group>";
@@ -203,7 +221,8 @@
 				39806BE32E0293C6002B83E2 /* Frameworks */,
 				39806BE42E0293C6002B83E2 /* Resources */,
 				39806C052E0296F0002B83E2 /* Embed Frameworks */,
-				39AAAF322E02FFBA000A3929 /* CopyFiles */,
+				39AAAF322E02FFBA000A3929 /* Copy Files */,
+				399B136B2F6B1C020047670F /* CopyFiles */,
 				39AAAF3B2E0301B8000A3929 /* CopyFiles */,
 			);
 			buildRules = (

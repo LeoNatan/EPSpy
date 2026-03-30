@@ -44,6 +44,7 @@
 
 @end
 
-int main(int argc, const char * argv[]) {
+int main(int argc, const char * argv[])
+{
 	[[XPCListener new] start];
 }

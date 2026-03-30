@@ -48,7 +48,9 @@ static NSXPCConnection* currentConnection = nil;
 	SMAppService* service = [SMAppService daemonServiceWithPlistName:@"com.LeoNatan.EPRecordingService.plist"];
 	
 	[service unregisterAndReturnError:&err];
-	
+
+    service = [SMAppService daemonServiceWithPlistName:@"com.LeoNatan.EPRecordingService.plist"];
+
 	int retryCount = 3;
 	
 	while(retryCount > 0)

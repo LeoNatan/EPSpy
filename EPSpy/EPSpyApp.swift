@@ -364,10 +364,10 @@ struct ContentView: View {
 			}
 		}
         .scrollDisabled(true)
-        .fileImporter(isPresented: $pathPickerPresented, allowedContentTypes: [.image, .pdf], onCompletion: { result in
+        .fileImporter(isPresented: $pathPickerPresented, allowedContentTypes: [.image]) { result in
             exportURL = try? result.get()
             pathPickerPresented = false
-        })
+        }
 	}
 }
 
