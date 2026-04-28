@@ -6,10 +6,8 @@
 //
 
 #import "Benchmark.h"
-@import CoreML;
-@import Vision;
+@import Speech;
 @import Darwin;
-@import CoreImage;
 
 #define ln_dispatch_queue_create_autoreleasing(name, attr) dispatch_queue_create(name, dispatch_queue_attr_make_with_autorelease_frequency(attr, DISPATCH_AUTORELEASE_FREQUENCY_WORK_ITEM))
 
@@ -51,83 +49,13 @@
     return rv;
 }
 
-- (VNImageRequestHandler*)_handlerForURL:(NSURL*)URL scale:(double)scale timing:(NSMutableArray*)timing
+- (SFSpeechRecognitionRequest*)_handlerForURL:(NSURL*)URL
 {
-	if(scale == 1.0)
-	{
-        //Use the URL directly
+    SFSpeechURLRecognitionRequest* rv = [[SFSpeechURLRecognitionRequest alloc] initWithURL:URL];
 
-		return [[VNImageRequestHandler alloc] initWithURL:URL options:@{}];
-	}
-
-    if(scale > 1.0)
-    {
-        NSTimeInterval innerStart = NSDate.timeIntervalSinceReferenceDate;
-
-        CIImage* ciImage = [CIImage imageWithContentsOfURL:URL];
-        CVPixelBufferRef buffer = NULL;
-        CVPixelBufferCreate(kCFAllocatorDefault, ciImage.extent.size.width, ciImage.extent.size.height, k32ARGBPixelFormat, (__bridge CFDictionaryRef)@{
-            (__bridge id)kCVPixelBufferCGImageCompatibilityKey: @YES,
-            (__bridge id)kCVPixelBufferCGBitmapContextCompatibilityKey: @YES
-        }, &buffer);
-
-        static CIContext* ctx = nil;
-        static dispatch_once_t onceToken;
-        dispatch_once(&onceToken, ^{
-            id<MTLDevice> mtlDevice = MTLCreateSystemDefaultDevice();
-            if (mtlDevice != nil)
-            {
-                // Metal-backed context provides optimal GPU utilization
-                ctx = [CIContext contextWithMTLDevice:mtlDevice options:@{
-                    kCIContextCacheIntermediates: @NO,  // Don't cache intermediates - reduces memory overhead
-                    kCIContextUseSoftwareRenderer: @NO  // Force hardware (GPU) rendering
-                }];
-            }
-            else
-            {
-                // Fallback for systems without Metal support (shouldn't happen on modern Macs)
-                ctx = [CIContext contextWithOptions:@{
-                    kCIContextUseSoftwareRenderer: @NO
-                }];
-            }
-        });
-
-        [ctx render:ciImage toCVPixelBuffer:buffer];
-
-        id rv = [[VNImageRequestHandler alloc] initWithCVPixelBuffer:buffer options:@{}];
-
-        CFRelease(buffer);
-
-        NSTimeInterval innerEnd = NSDate.timeIntervalSinceReferenceDate;
-        [timing addObject:@(innerEnd - innerStart)];
-
-        return rv;
-    }
-
-    //Use CGImageSource to scale the image
-	NSTimeInterval innerStart = NSDate.timeIntervalSinceReferenceDate;
-
-	CGImageSourceRef src = CGImageSourceCreateWithURL((__bridge CFURLRef)URL, NULL);
-	NSDictionary* props = CFBridgingRelease(CGImageSourceCopyPropertiesAtIndex(src, 0, NULL));
-	NSInteger width = [props[@"PixelWidth"] integerValue];
-	NSInteger height = [props[@"PixelHeight"] integerValue];
-	NSInteger max = MAX(width, height);
-	NSInteger scaled = round(scale * max);
-
-	CGImageRef img = CGImageSourceCreateThumbnailAtIndex(src, 0, (__bridge CFDictionaryRef)@{
-		(__bridge id)kCGImageSourceCreateThumbnailFromImageAlways: @1,
-		(__bridge id)kCGImageSourceCreateThumbnailWithTransform: @1,
-		(__bridge id)kCGImageSourceThumbnailMaxPixelSize: @(scaled)
-	});
-
-	id rv = [[VNImageRequestHandler alloc] initWithCGImage:img orientation:kCGImagePropertyOrientationUp options:@{}];
-
-	CGImageRelease(img);
-	CFRelease(src);
-
-	NSTimeInterval innerEnd = NSDate.timeIntervalSinceReferenceDate;
-
-	[timing addObject:@(innerEnd - innerStart)];
+    rv.shouldReportPartialResults = NO;
+    rv.requiresOnDeviceRecognition = YES;
+    rv.addsPunctuation = NO;
 
 	return rv;
 }
@@ -143,115 +71,44 @@
         }
     };
 
-    __block NSError* _error = nil;
+    NSOperationQueue* queue = [NSOperationQueue new];
+    queue.maxConcurrentOperationCount = NSOperationQueueDefaultMaxConcurrentOperationCount;
 
-    NSArray<id<MLComputeDeviceProtocol>>* devices = MLAllComputeDevices();
-    id<MLComputeDeviceProtocol> deviceToUse = nil;
-    if(predicate != nil)
-    {
-        for(id<MLComputeDeviceProtocol> device in devices)
-        {
-            if([NSStringFromClass(device.class) localizedCaseInsensitiveContainsString:predicate])
-            {
-                deviceToUse = device;
-                break;
-            }
-        }
-    }
+    SFSpeechRecognizer* recognizer = [SFSpeechRecognizer new];
+    recognizer.queue = queue;
 
-    dispatch_queue_attr_t attr = dispatch_queue_attr_make_with_qos_class(parallel ? DISPATCH_QUEUE_CONCURRENT : NULL, QOS_CLASS_USER_INITIATED, 0);
-    dispatch_queue_t queue = ln_dispatch_queue_create_autoreleasing("q", attr);
-
-    NSMutableArray* results = [[NSMutableArray alloc] initWithCapacity:iterations];
-    for (size_t idx = 0; idx < iterations; idx++) {
-        results[idx] = @0.0;
-    }
+    NSParameterAssert(recognizer.available);
+    NSParameterAssert(recognizer.supportsOnDeviceRecognition);
 
     NSTimeInterval start = NSDate.timeIntervalSinceReferenceDate;
 
-	__block NSArray<VNRecognizedTextObservation*>* parsedResults;
+    [recognizer recognitionTaskWithRequest:[self _handlerForURL:URL] resultHandler:^(SFSpeechRecognitionResult * _Nullable result, NSError * _Nullable error) {
+        NSTimeInterval end = NSDate.timeIntervalSinceReferenceDate;
 
-    dispatch_apply(iterations, queue, ^(size_t iteration) {
-        dispatch_group_t group = dispatch_group_create();
-        dispatch_group_enter(group);
+        NSMutableDictionary* rv = [NSMutableDictionary new];
+        rv[@"totalDuration"] = @(end - start);
+        rv[@"results"] = @[@(end - start)];
 
-		NSMutableArray* perItem = [NSMutableArray new];
+        NSMutableDictionary* device = [NSMutableDictionary new];
+        device[@"hw_model"] = [self _hwModel];
+        device[@"hw_machine"] = [self _hwMachine];
+        device[@"os"] = NSProcessInfo.processInfo.operatingSystemVersionString;
+        rv[@"hostMachine"] = device;
 
-        VNRecognizeTextRequest* request = [[VNRecognizeTextRequest alloc] initWithCompletionHandler:^(VNRequest * _Nonnull request, NSError * _Nullable error) {
-            if(error)
-            {
-                _error = error;
-            }
-
-            dispatch_group_leave(group);
-        }];
-//        request.recognitionLanguages = @[@"en"];
-//        request.automaticallyDetectsLanguage = NO;
-        request.usesLanguageCorrection = correct;
-        request.preferBackgroundProcessing = NO;
-        request.revision = VNRequest.currentRevision;
-        [request setComputeDevice:deviceToUse forComputeStage:VNComputeStageMain];
-//        [request setComputeDevice:deviceToUse forComputeStage:VNComputeStagePostProcessing];
-
-		VNImageRequestHandler* handler = [self _handlerForURL:URL scale:scale timing:perItem];
-
-        NSTimeInterval innerStart = NSDate.timeIntervalSinceReferenceDate;
-
-        if([handler performRequests:@[request] error:&_error])
+        NSMutableArray<NSDictionary<NSString*, id>*>* parsedText = [NSMutableArray new];
+        SFTranscription* toUse = result.bestTranscription;
+        if(toUse)
         {
-            dispatch_group_wait(group, DISPATCH_TIME_FOREVER);
+            [parsedText addObject:@{
+                @"confidence": @0.0,
+                @"string": toUse.formattedString,
+            }];
+            rv[@"parseResults"] = parsedText;
         }
 
-        NSTimeInterval innerEnd = NSDate.timeIntervalSinceReferenceDate;
-		[perItem addObject:@(innerEnd - innerStart)];
-		results[iteration] = perItem;
-
-		if(iteration == 0)
-		{
-			parsedResults = request.results;
-		}
-    });
-
-    NSTimeInterval end = NSDate.timeIntervalSinceReferenceDate;
-
-    NSMutableDictionary* rv = [NSMutableDictionary new];
-    rv[@"totalDuration"] = @(end - start);
-    rv[@"results"] = results;
-
-    NSMutableDictionary* compute = [NSMutableDictionary new];
-    compute[@"availableDevices"] = [devices valueForKeyPath:@"class.description"];
-    NSDictionary* supported = [[VNRecognizeTextRequest new] supportedComputeStageDevicesAndReturnError:NULL];
-    compute[@"supportedDevicesMain"] = [supported[VNComputeStageMain] valueForKeyPath:@"class.description"] ?: @[];
-    compute[@"supportedDevicesPost"] = [supported[VNComputeStagePostProcessing] valueForKeyPath:@"class.description"] ?: @[];
-    compute[@"deviceUsed"] = deviceToUse.class.description;
-    rv[@"computeDevices"] = compute;
-
-    NSMutableDictionary* device = [NSMutableDictionary new];
-    device[@"hw_model"] = [self _hwModel];
-    device[@"hw_machine"] = [self _hwMachine];
-	device[@"os"] = NSProcessInfo.processInfo.operatingSystemVersionString;
-	device[@"visionRevision"] = @(VNRequest.currentRevision);
-    rv[@"hostMachine"] = device;
-
-	NSMutableArray<NSDictionary<NSString*, id>*>* parsedText = [NSMutableArray new];
-	for (VNRecognizedTextObservation* to in parsedResults)
-	{
-		NSArray<VNRecognizedText*>* arr = [to topCandidates:1];
-		if(arr.count == 0)
-		{
-			continue;
-		}
-		VNRecognizedText* toUse = arr[0];
-
-		[parsedText addObject:@{
-			@"confidence": @(toUse.confidence),
-			@"string": toUse.string
-		}];
-	}
-	rv[@"parseResults"] = parsedText;
-
-    completionHandler(rv, _error);
-    exitIfNeeded();
+        completionHandler(rv, error);
+        exitIfNeeded();
+    }];
 }
 
 @end

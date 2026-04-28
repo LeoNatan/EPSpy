@@ -232,11 +232,11 @@ struct ContentView: View {
 
     @AppStorage("runInDaemon")
     var runInDaemon: Bool = false
-	@AppStorage("imagePath")
+	@AppStorage("audioPath")
 	var exportURL: URL?
-    @AppStorage("processIterations")
-    var processIterations: Int = 20
-    @AppStorage("devicePredicate")
+    @AppStorage("speechProcessIterations")
+    var processIterations: Int = 1
+    @AppStorage("speechDevicePredicate")
     var devicePredicate: String?
     @AppStorage("runInParallel")
     var runInParallel: Bool = false
@@ -276,48 +276,50 @@ struct ContentView: View {
                     }
                 }
             } header: {
-                Text("Image to Process")
+                Text("Audio to Process")
             }
+//            Section {
+//                HStack {
+//                    Text("Input Scale")
+//                    Spacer()
+//                    Slider(value: $inputScale, in: 0.1...1.05, step: 0.05)
+//                    if inputScale > 1.0 {
+//                        Text("CV").frame(width: 40)
+//                    } else if inputScale == 1.0 {
+//                        Text("URL").frame(width: 40)
+//                    } else {
+//                        Text(inputScale.formatted(.percent.precision(.fractionLength(0)))).frame(width: 40)
+//                    }
+//                }
+//                Toggle(isOn: $correct) {
+//                    Text("Uses Language Correction")
+//                }
+//            } header: {
+//                Text("Settings")
+//            }
             Section {
-                HStack {
-                    Text("Input Scale")
-                    Spacer()
-                    Slider(value: $inputScale, in: 0.1...1.05, step: 0.05)
-                    if inputScale > 1.0 {
-                        Text("CV").frame(width: 40)
-                    } else if inputScale == 1.0 {
-                        Text("URL").frame(width: 40)
-                    } else {
-                        Text(inputScale.formatted(.percent.precision(.fractionLength(0)))).frame(width: 40)
-                    }
-                }
-                Toggle(isOn: $correct) {
-                    Text("Uses Language Correction")
-                }
-            } header: {
-                Text("Settings")
-            }
-            Section {
-                HStack {
-                    Text("Iterations")
-                    Spacer()
-                    Slider(value: .init {
-                        Double(processIterations)
-                    } set: { newValue in
-                        processIterations = Int(newValue)
-                    }, in: 1.0...200.0)
-                    Text(processIterations.formatted()).frame(width: 30)
-                }
-                Toggle(isOn: $runInParallel) {
-                    Text("Run in Parallel")
-                }
-                Picker("Device", selection: $devicePredicate) {
-                    Text("Auto").tag(nil as String?)
-                    Divider()
-                    Text("CPU").tag("cpu" as String?)
-                    Text("GPU").tag("gpu" as String?)
-                    Text("Neural Engine").tag("neural" as String?)
-                }.pickerStyle(.menu)
+//                HStack {
+//                    Text("Iterations")
+//                    Spacer()
+//                    Slider(value: .init {
+//                        Double(processIterations)
+//                    } set: { newValue in
+//                        processIterations = Int(newValue)
+//                    }, in: 1.0...10.0)
+//                    Text(processIterations.formatted()).frame(width: 30)
+//                }
+//                Toggle(isOn: $runInParallel) {
+//                    Text("Run in Parallel")
+//                }
+//                Picker("Device", selection: $devicePredicate) {
+//                    Text("Auto").tag(nil as String?)
+//                    Divider()
+//                    Text("CPU").tag("cpu" as String?)
+//                    Text("GPU").tag("gpu" as String?)
+//                    Text("Neural Engine").tag("neural" as String?)
+//                }
+//                .pickerStyle(.menu)
+//                .disabled(true)
                 Toggle(isOn: $runInDaemon) {
                     Text("Run in Daemon")
                 }
@@ -364,7 +366,7 @@ struct ContentView: View {
 			}
 		}
         .scrollDisabled(true)
-        .fileImporter(isPresented: $pathPickerPresented, allowedContentTypes: [.image]) { result in
+        .fileImporter(isPresented: $pathPickerPresented, allowedContentTypes: [.audio]) { result in
             exportURL = try? result.get()
             pathPickerPresented = false
         }
@@ -448,7 +450,7 @@ struct EPSpyApp: App {
     var body: some Scene {
         WindowGroup {
             ContentView()
-                .navigationTitle("CSMark")
+                .navigationTitle("CSSpeechMark")
 		}
 //		.restorationBehavior(.disabled)
 		.defaultPosition(.center)

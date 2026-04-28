@@ -72,7 +72,7 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
-		39806BE62E0293C6002B83E2 /* VisionPerformance.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = VisionPerformance.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		39806BE62E0293C6002B83E2 /* CSSpeechMark.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = CSSpeechMark.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		39806C072E02970A002B83E2 /* libEndpointSecurity.tbd */ = {isa = PBXFileReference; lastKnownFileType = "sourcecode.text-based-dylib-definition"; name = libEndpointSecurity.tbd; path = usr/lib/libEndpointSecurity.tbd; sourceTree = SDKROOT; };
 		39806C0E2E029AEF002B83E2 /* EPRecorder.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = EPRecorder.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		39AAAF2B2E02FF9D000A3929 /* EPRecordingService */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = EPRecordingService; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -182,7 +182,7 @@
 		39806BE72E0293C6002B83E2 /* Products */ = {
 			isa = PBXGroup;
 			children = (
-				39806BE62E0293C6002B83E2 /* VisionPerformance.app */,
+				39806BE62E0293C6002B83E2 /* CSSpeechMark.app */,
 				39806C0E2E029AEF002B83E2 /* EPRecorder.framework */,
 				39AAAF2B2E02FF9D000A3929 /* EPRecordingService */,
 			);
@@ -236,7 +236,7 @@
 			packageProductDependencies = (
 			);
 			productName = EPSpy;
-			productReference = 39806BE62E0293C6002B83E2 /* VisionPerformance.app */;
+			productReference = 39806BE62E0293C6002B83E2 /* CSSpeechMark.app */;
 			productType = "com.apple.product-type.application";
 		};
 		39806C0D2E029AEF002B83E2 /* EPRecorder */ = {
@@ -540,7 +540,7 @@
 					"-ObjC",
 				);
 				PRODUCT_BUNDLE_IDENTIFIER = com.LeoNatan.EPSpy;
-				PRODUCT_NAME = VisionPerformance;
+				PRODUCT_NAME = CSSpeechMark;
 				REGISTER_APP_GROUPS = YES;
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_OBJC_BRIDGING_HEADER = "EPSpy/EPSpy-Bridging-Header.h";
@@ -571,7 +571,7 @@
 					"-ObjC",
 				);
 				PRODUCT_BUNDLE_IDENTIFIER = com.LeoNatan.EPSpy;
-				PRODUCT_NAME = VisionPerformance;
+				PRODUCT_NAME = CSSpeechMark;
 				REGISTER_APP_GROUPS = YES;
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_OBJC_BRIDGING_HEADER = "EPSpy/EPSpy-Bridging-Header.h";
