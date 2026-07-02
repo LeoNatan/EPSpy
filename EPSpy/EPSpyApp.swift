@@ -244,6 +244,8 @@ struct ContentView: View {
 	var inputScale: Double = 1.0
     @AppStorage("correct")
     var correct: Bool = true
+    @AppStorage("revision")
+    var revision: Int?
 
     @MainActor
 	func toggleRecording() async {
@@ -255,6 +257,7 @@ struct ContentView: View {
                                                                          devicePredicate: devicePredicate,
 																		 inputScale: inputScale,
                                                                          correct: correct,
+                                                                         revision: revision as? NSNumber,
                                                                          targetProcess: runInDaemon ? .rootDaemon : .local)
         } catch {
             NSAlert(error: error).runModal()
@@ -294,6 +297,13 @@ struct ContentView: View {
                 Toggle(isOn: $correct) {
                     Text("Uses Language Correction")
                 }
+                Picker("Revision", selection: $revision) {
+                    Text("Auto").tag(nil as Int?)
+                    Divider()
+                    Text("1").tag(1 as Int?)
+                    Text("2").tag(2 as Int?)
+                    Text("3").tag(3 as Int?)
+                }.pickerStyle(.menu)
             } header: {
                 Text("Settings")
             }

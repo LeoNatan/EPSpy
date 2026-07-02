@@ -132,7 +132,7 @@
 	return rv;
 }
 
-- (void)processImageAtURL:(NSURL *)URL iterations:(NSUInteger)iterations parallel:(BOOL)parallel devicePredicate:(NSString* __nullable)predicate inputScale:(double)scale correct:(BOOL)correct exitAtEnd:(BOOL)exitAtEnd completionHandler:(void (^)(NSDictionary* results, NSError*))completionHandler
+- (void)processImageAtURL:(NSURL *)URL iterations:(NSUInteger)iterations parallel:(BOOL)parallel devicePredicate:(NSString* __nullable)predicate inputScale:(double)scale correct:(BOOL)correct revision:(NSNumber* __nullable)revisionOrNil exitAtEnd:(BOOL)exitAtEnd completionHandler:(void (^)(NSDictionary* results, NSError*))completionHandler
 {
     void (^exitIfNeeded)(void) = ^ {
         if(exitAtEnd)
@@ -186,10 +186,13 @@
             dispatch_group_leave(group);
         }];
 //        request.recognitionLanguages = @[@"en"];
-//        request.automaticallyDetectsLanguage = NO;
+        request.automaticallyDetectsLanguage = YES;
         request.usesLanguageCorrection = correct;
         request.preferBackgroundProcessing = NO;
-        request.revision = VNRequest.currentRevision;
+        if (revisionOrNil != nil)
+        {
+            request.revision = [revisionOrNil unsignedIntegerValue];
+        }
         [request setComputeDevice:deviceToUse forComputeStage:VNComputeStageMain];
 //        [request setComputeDevice:deviceToUse forComputeStage:VNComputeStagePostProcessing];
 
