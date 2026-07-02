@@ -10,6 +10,7 @@
 @import Vision;
 @import Darwin;
 @import CoreImage;
+@import Metal;
 
 #define ln_dispatch_queue_create_autoreleasing(name, attr) dispatch_queue_create(name, dispatch_queue_attr_make_with_autorelease_frequency(attr, DISPATCH_AUTORELEASE_FREQUENCY_WORK_ITEM))
 
